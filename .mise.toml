@@ -1,0 +1,14 @@
+[tools]
+python = "3.11"
+uv = "latest"
+
+[settings]
+python.uv_venv_auto = "create|source"
+
+[tasks.run]
+description = "run project with uv"
+run = "uv run python main.py"
+
+[tasks.sync]
+description = "install dependencies"
+run = "uv sync"
