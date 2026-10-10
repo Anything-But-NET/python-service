@@ -7,7 +7,7 @@ python.uv_venv_auto = "create|source"
 
 [tasks.run]
 description = "run project with uv"
-run = "uv run python main.py"
+run = "uv run python -m python_service.main"
 
 [tasks.sync]
 description = "install dependencies"
