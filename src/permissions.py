@@ -4,54 +4,49 @@ from typing import Any, Dict, List, Optional
 
 def process_document_permissions(raw_metadata: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Process document permission metadata.
-    If permissions are missing or unknown, apply explicit default-deny policy.
+    Process document permission metadata according to the SCRUM-87 contract.
+    If metadata is missing, apply explicit default-deny policy.
     """
-    permissions = {
-        "is_public": False,
-        "allowed_groups": [],
-        "allowed_users": []
+    acl = {
+        "allowed_groups": []
     }
 
-    if not raw_metadata or "permissions" not in raw_metadata:
-        return permissions
+    if not raw_metadata or "acl" not in raw_metadata:
+        return acl
 
-    raw_perms = raw_metadata["permissions"]
-    permissions["is_public"] = raw_perms.get("is_public", False)
-    permissions["allowed_groups"] = raw_perms.get("allowed_groups", [])
-    permissions["allowed_users"] = raw_perms.get("allowed_users", [])
+    raw_acl = raw_metadata["acl"]
+    acl["allowed_groups"] = raw_acl.get("allowed_groups", [])
 
-    return permissions
+    return acl
 
 
 def mock_ingest_document(doc_id: str, raw_metadata: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Simulate document ingestion and storage in PostgreSQL with permission metadata.
+    Simulate document ingestion and storage in PostgreSQL with acl metadata.
     """
-    processed_permissions = process_document_permissions(raw_metadata)
+    processed_acl = process_document_permissions(raw_metadata)
 
     return {
         "document_id": doc_id,
         "status": "COMPLETED",
         "metadata": {
             "ingested_at": datetime.utcnow().isoformat() + "Z",
-            "permissions": processed_permissions
+            "acl": processed_acl
         }
     }
 
 
 def check_access(document_record: Dict[str, Any], user_id: str, user_groups: List[str]) -> bool:
     """
-    Verify whether a user has access to the document based on permission metadata.
+    Verify whether a user has access to the document based on the acl object.
+    Both user_id and groups are checked against allowed_groups.
     """
-    perms = document_record["metadata"]["permissions"]
+    allowed = document_record["metadata"]["acl"]["allowed_groups"]
 
-    if perms["is_public"]:
-        return True
-    if user_id in perms["allowed_users"]:
+    if user_id in allowed:
         return True
     for group in user_groups:
-        if group in perms["allowed_groups"]:
+        if group in allowed:
             return True
 
     return False
