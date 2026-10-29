@@ -82,6 +82,7 @@ app = create_app()
 
 def main() -> None:
     settings = get_settings()
+    print(settings.db_url)
     uvicorn.run(
         "python_service.main:app",
         host=settings.api_host,

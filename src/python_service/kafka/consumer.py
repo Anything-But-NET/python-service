@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 
-from confluent_kafka import Consumer, KafkaError, KafkaException
+from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
 
 from python_service.config import get_settings
 from python_service.db.service import RagDbService
@@ -41,6 +41,10 @@ class IngestionKafkaWorker:
             "group.id": group_id or settings.kafka_group_id,
             "auto.offset.reset": "earliest",
             "enable.auto.commit": False,
+        })
+
+        self.producer = Producer({
+            "bootstrap.servers": kafka_brokers or settings.kafka_brokers,
         })
 
     async def _handle_event(self, event: KafkaNewFileDataEvent) -> None:
@@ -90,10 +94,26 @@ class IngestionKafkaWorker:
                     event = event_adapter.validate_python(payload_dict)
 
                     await self._handle_event(event)
-                    await asyncio.to_thread(self.consumer.commit, asynchronous=False)
 
                 except Exception as e:
+                    headers = msg.headers() or []
+                    headers.extend([
+                        ('error_reason', str(e).encode('utf-8')),
+                        ('original_topic', msg.topic().encode('utf-8')),
+                        ('original_partition', str(msg.partition()).encode('utf-8')),
+                        ('original_offset', str(msg.offset()).encode('utf-8'))
+                    ])
+                    
+                    self.producer.produce(
+                        topic=self.topic + ".dlt",
+                        key=msg.key(),
+                        value=msg.value(),
+                        headers=headers
+                    )
+                    self.producer.poll(0)
                     logger.error(f"Failed processing message: {e}", exc_info=True)
+                finally:
+                    await asyncio.to_thread(self.consumer.commit, asynchronous=False)
 
         except asyncio.CancelledError:
             logger.info("Kafka consumer task cancelled, shutting down...")
