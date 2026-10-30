@@ -3,7 +3,23 @@ name = "python-service"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "accelerate>=0.30.0",
+    "confluent-kafka>=2.16.1",
+    "fastapi>=0.115.0",
+    "greenlet>=3.0.0",
+    "numpy>=1.26.0,<3.0.0",
+    "pgvector>=0.3.0",
+    "psycopg>=3.1.18",
+    "psycopg-binary>=3.1.18",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.6.0",
+    "sentencepiece>=0.2.0",
+    "sqlalchemy>=2.0.30",
+    "torch>=2.3.0",
+    "transformers>=4.40.0",
+    "uvicorn[standard]>=0.32.0",
+]
 
 [build-system]
 requires = ["uv_build"]
@@ -12,3 +28,17 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "python_service"
 module-root = "src"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1",
+    "pytest-cov>=7.1.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
