@@ -93,7 +93,7 @@ def test_settings_and_aliases():
         KAFKA_TOPIC="custom.topic",
         KAFKA_GROUP_ID="custom-group",
         KAFKA_ENABLED=False,
-        EMBEDDING_MODEL_NAME="custom-model",
+        VECTORIZER_GRPC_TARGET="vectorizer:50051",
         API_HOST="127.0.0.1",
         API_PORT=9000,
     )
@@ -102,7 +102,7 @@ def test_settings_and_aliases():
     assert settings.kafka_topic == "custom.topic"
     assert settings.kafka_group_id == "custom-group"
     assert settings.kafka_enabled is False
-    assert settings.embedding_model_name == "custom-model"
+    assert settings.vectorizer_grpc_target == "vectorizer:50051"
     assert settings.api_host == "127.0.0.1"
     assert settings.api_port == 9000
 

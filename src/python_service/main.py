@@ -1,17 +1,17 @@
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
-import logging
 
-from fastapi import FastAPI
 import uvicorn
+from fastapi import FastAPI
 
 from python_service.api.routes import router
 from python_service.config import get_settings
 from python_service.db.service import RagDbService
 from python_service.kafka.consumer import IngestionKafkaWorker
 from python_service.services.parse_service import MarkdownParserService
-from python_service.services.transform_service import MarkdownVectorizationService
+from python_service.services.transform_service import VectorizationService
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,9 +26,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Initializing services...")
 
     parser_service = MarkdownParserService()
-    vectorizer_service = await asyncio.to_thread(
-        MarkdownVectorizationService,
-        settings.embedding_model_name,
+    vectorizer_service = VectorizationService(
+        grpc_target=settings.vectorizer_grpc_target,
     )
     db_service = RagDbService(db_url=settings.db_url)
     await db_service.init_schema()
@@ -64,6 +63,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             kafka_task.cancel()
             with suppress(asyncio.CancelledError):
                 await kafka_task
+        vectorizer_service.close()
         await db_service.close()
 
 
