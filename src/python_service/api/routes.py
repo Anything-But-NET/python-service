@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from python_service.api.dependencies import get_db_service, get_vectorizer_service
 from python_service.api.schemas import HealthResponse, SearchRequest, SearchResponse
 from python_service.db.service import RagDbService
-from python_service.services.transform_service import MarkdownVectorizationService
+from python_service.services.transform_service import VectorizationService
 
 router = APIRouter()
 
@@ -20,7 +20,7 @@ async def health_check() -> HealthResponse:
 async def search_documents(
     payload: SearchRequest,
     db: Annotated[RagDbService, Depends(get_db_service)],
-    vectorizer: Annotated[MarkdownVectorizationService, Depends(get_vectorizer_service)],
+    vectorizer: Annotated[VectorizationService, Depends(get_vectorizer_service)],
 ) -> SearchResponse:
     query_vec = await asyncio.to_thread(vectorizer.vectorize_query, payload.query)
     results = await db.query_with_auto_merge(

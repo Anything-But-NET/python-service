@@ -1,7 +1,7 @@
 from python_service.services.parse_service import MarkdownParserService
-from python_service.services.transform_service import MarkdownVectorizationService
+from python_service.services.transform_service import VectorizationService
 
 __all__ = [
     "MarkdownParserService",
-    "MarkdownVectorizationService",
+    "VectorizationService",
 ]

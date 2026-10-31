@@ -14,7 +14,7 @@ from python_service.models.events import (
     event_adapter,
 )
 from python_service.services.parse_service import MarkdownParserService
-from python_service.services.transform_service import MarkdownVectorizationService
+from python_service.services.transform_service import VectorizationService
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class IngestionKafkaWorker:
     def __init__(
         self,
         parser: MarkdownParserService,
-        vectorizer: MarkdownVectorizationService,
+        vectorizer: VectorizationService,
         db: RagDbService,
         kafka_brokers: str | None = None,
         group_id: str | None = None,
@@ -114,7 +114,9 @@ class IngestionKafkaWorker:
                     logger.error(f"Failed processing message: {e}", exc_info=True)
                 finally:
                     await asyncio.to_thread(self.consumer.commit, asynchronous=False)
-
+        except KafkaException as e:
+            logger.error(f"Kafka exception waiting: {e}", exc_info=True)
+            await asyncio.sleep(5)
         except asyncio.CancelledError:
             logger.info("Kafka consumer task cancelled, shutting down...")
         finally:

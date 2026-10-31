@@ -5,15 +5,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
-
     # Database settings
     db_url: str = Field(
-        default="postgresql+psycopg://postgres:postgres@localhost:5433/postgres",
+        default="postgresql://postgres:postgres@localhost:5433/postgres",
         validation_alias=AliasChoices("DB_URL", "VECTOR_DB_URL", "DATABASE_URL"),
     )
 
@@ -35,10 +29,14 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("KAFKA_ENABLED"),
     )
 
-    # Embedding model settings
-    embedding_model_name: str = Field(
-        default="BAAI/bge-m3",
-        validation_alias=AliasChoices("EMBEDDING_MODEL_NAME"),
+    # Vectorizer gRPC settings
+    vectorizer_grpc_target: str = Field(
+        default="localhost:50051",
+        validation_alias=AliasChoices(
+            "VECTORIZER_GRPC_TARGET",
+            "VECTORIZER_GRPC_URL",
+            "VECTORIZER_URL",
+        ),
     )
     vector_size: int = Field(
         default=1024,

@@ -1,245 +1,138 @@
-import re
-
+import grpc
 import numpy as np
-import torch
-from transformers import AutoModel, AutoTokenizer
 
 from python_service.config import get_settings
+from python_service.grpc_gen import vectorizer_pb2, vectorizer_pb2_grpc
 from python_service.models.domain import SegmentNode, VectorizedSegmentNode
 
 
-class MarkdownVectorizationService:
-    SENTENCE_SPLIT_PATTERN = re.compile(
-        r"([^\n]*\n(?:```[\s\S]*?```|~~~[\s\S]*?~~~))|(?<=[.!?])\s+|\n+"
-    )
-    SUBTOPIC_PREFIX = "**"
-    SUBTOPIC_MIN_LEN = 25
+MAX_MESSAGE_LENGTH = 50 * 1024 * 1024  # 50 MB
+GRPC_CHANNEL_OPTIONS = [
+    ("grpc.max_send_message_length", MAX_MESSAGE_LENGTH),
+    ("grpc.max_receive_message_length", MAX_MESSAGE_LENGTH),
+]
 
-    def __init__(self, model_name: str | None = None):
-        self.model_name = model_name or get_settings().embedding_model_name
-        self.device = (
-            "mps"
-            if torch.backends.mps.is_available()
-            else ("cuda" if torch.cuda.is_available() else "cpu")
-        )
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self.model = AutoModel.from_pretrained(self.model_name).to(self.device)
+def _decode_vector(raw_bytes: bytes) -> np.ndarray | None:
+    if not raw_bytes:
+        return None
+    return np.frombuffer(raw_bytes, dtype=np.float32).copy()
 
-    @staticmethod
-    def _l2_normalize(vec: np.ndarray) -> np.ndarray:
-        norm = np.linalg.norm(vec)
-        return vec / norm if norm > 0 else vec
 
-    @staticmethod
-    def _merge_vectors(vectors: list[np.ndarray], temperature: float = 0.1) -> np.ndarray:
-        matrix = np.array(vectors)
-
-        norms = np.linalg.norm(matrix, axis=1, keepdims=True)
-        normalized = matrix / np.where(norms == 0, 1, norms)
-
-        attention_matrix = normalized @ normalized.T
-        scores = np.mean(attention_matrix, axis=1).flatten()
-
-        exp_scores = np.exp((scores - np.max(scores)) / temperature)
-        weights = exp_scores / np.sum(exp_scores)
-
-        parent_vector = weights @ normalized
-        return MarkdownVectorizationService._l2_normalize(parent_vector)
-
-    def _split_oversized_sentences(
+class VectorizationService:
+    def __init__(
         self,
-        sentences: list[str],
-        max_chunk_size: int,
-        chunk_overlap: int,
-    ) -> list[tuple[str, int]]:
-        token_ids_list = self.tokenizer(sentences, add_special_tokens=False)["input_ids"]
-        step = max(1, max_chunk_size - max(0, min(chunk_overlap, max_chunk_size - 1)))
-
-        result: list[tuple[str, int]] = []
-        for sentence, token_ids in zip(sentences, token_ids_list):
-            s_len = len(token_ids)
-            if s_len <= max_chunk_size:
-                result.append((sentence, s_len))
-                continue
-
-            lines = [line.strip() for line in sentence.splitlines() if line.strip()]
-            if len(lines) > 1:
-                result.extend(
-                    self._split_oversized_sentences(lines, max_chunk_size, chunk_overlap)
-                )
-                continue
-
-            for start_idx in range(0, s_len, step):
-                slice_ids = token_ids[start_idx : start_idx + max_chunk_size]
-                slice_text = self.tokenizer.decode(slice_ids, skip_special_tokens=True).strip()
-                if slice_text:
-                    result.append((slice_text, len(slice_ids)))
-                if start_idx + max_chunk_size >= s_len:
-                    break
-
-        return result
-
-    def _micro_split_chunks(
-        self,
-        text: str,
-        max_chunk_size: int = 100,
-        chunk_overlap: int = 0,
-    ) -> list[tuple[str, int, int]]:
-        res: list[tuple[str, int, int]] = []
-
-        raw_sentences = [
-            s.strip()
-            for s in self.SENTENCE_SPLIT_PATTERN.split(text)
-            if s and s.strip()
-        ]
-        if not raw_sentences:
-            return res
-
-        sentences_with_lens = self._split_oversized_sentences(
-            raw_sentences,
-            max_chunk_size=max_chunk_size,
-            chunk_overlap=chunk_overlap,
+        grpc_target: str | None = None,
+        channel: grpc.Channel | None = None,
+    ):
+        self.grpc_target = grpc_target or get_settings().vectorizer_grpc_target
+        self._owns_channel = channel is None
+        self.channel = channel or grpc.insecure_channel(
+            self.grpc_target,
+            options=GRPC_CHANNEL_OPTIONS,
         )
+        self.stub = vectorizer_pb2_grpc.MarkdownVectorizerStub(self.channel)
 
-        current_len = 0
-        current_sentences: list[tuple[str, int]] = []
-        start_token_idx = 1
-
-        for sentence, s_len in sentences_with_lens:
-            is_subtopic = (
-                sentence.startswith(self.SUBTOPIC_PREFIX)
-                and current_len >= self.SUBTOPIC_MIN_LEN
-            )
-            if not is_subtopic and current_len + s_len <= max_chunk_size:
-                current_sentences.append((sentence, s_len))
-                current_len += s_len
-            else:
-                if current_sentences:
-                    chunk_text = "\n".join(s for s, _ in current_sentences)
-                    res.append((chunk_text, start_token_idx, start_token_idx + current_len))
-
-                while (
-                    is_subtopic
-                    or current_len > chunk_overlap
-                    or current_len + s_len > max_chunk_size
-                ) and current_sentences:
-                    _, popped_len = current_sentences.pop(0)
-                    current_len -= popped_len
-                    start_token_idx += popped_len
-                    if is_subtopic and current_len == 0:
-                        break
-
-                current_len += s_len
-                current_sentences.append((sentence, s_len))
-
-        if current_sentences:
-            chunk_text = "\n".join(s for s, _ in current_sentences)
-            res.append((chunk_text, start_token_idx, start_token_idx + current_len))
-
-        return res
-
-    def _get_embedding(
-        self,
-        data: str,
-        macro_chunk_size: int = 7500,
-        macro_chunk_overlap: int = 500,
-    ) -> list[tuple[str, np.ndarray]]:
-        if not data.strip():
-            return []
-
-        macro_chunks = self._micro_split_chunks(
-            data,
-            max_chunk_size=macro_chunk_size,
-            chunk_overlap=macro_chunk_overlap,
-        )
-
-        res: list[tuple[str, np.ndarray]] = []
-        prev_macro_end = 1
-
-        for macro_idx, (macro_text, macro_start, macro_end) in enumerate(macro_chunks):
-            if not macro_text.strip():
-                continue
-
-            inputs = self.tokenizer(macro_text, return_tensors="pt")
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-
-            with torch.no_grad():
-                embeddings = self.model(**inputs).last_hidden_state
-
-            seq_len = embeddings.shape[1]
-
-            overlap_offset = (prev_macro_end - macro_start) if macro_idx > 0 else 0
-            min_micro_start = 1 + max(0, overlap_offset)
-
-            micro_chunks = [
-                (m_text, m_start, m_end)
-                for m_text, m_start, m_end in self._micro_split_chunks(macro_text)
-                if m_text.strip() and m_start >= min_micro_start
-            ]
-            if not micro_chunks:
-                prev_macro_end = macro_end
-                continue
-
-            batch_inputs = self.tokenizer(
-                [m_text for m_text, _, _ in micro_chunks],
-                padding=True,
-                truncation=True,
-                return_tensors="pt",
-            ).to(self.device)
-
-            with torch.no_grad():
-                batch_cls = self.model(**batch_inputs).last_hidden_state[:, 0].cpu().numpy()
-
-            for (micro_text, micro_start, micro_end), chunk_cls in zip(micro_chunks, batch_cls):
-                s_idx = min(max(micro_start, 1), seq_len - 1)
-                e_idx = min(max(micro_end, s_idx + 1), seq_len)
-
-                late_span_vec = self._l2_normalize(
-                    embeddings[0, s_idx:e_idx].mean(dim=0).cpu().numpy()
-                )
-                vec = self._l2_normalize(self._l2_normalize(chunk_cls) + late_span_vec)
-                res.append((micro_text, vec))
-
-            prev_macro_end = macro_end
-
-        return res
+    def close(self) -> None:
+        if self._owns_channel and self.channel is not None:
+            self.channel.close()
 
     def vectorize_query(self, query: str) -> np.ndarray:
-        chunks = self._get_embedding(query)
-        if not chunks:
+        if not query or not query.strip():
             raise ValueError("Query cannot be empty")
-        if len(chunks) == 1:
-            return chunks[0][1]
-        return self._merge_vectors([vec for _, vec in chunks])
+
+        try:
+            response = self.stub.VectorizeQuery(
+                vectorizer_pb2.QueryRequest(query=query)
+            )
+        except grpc.RpcError as exc:
+            if exc.code() == grpc.StatusCode.INVALID_ARGUMENT:
+                raise ValueError(exc.details() or "Invalid query") from exc
+            raise
+
+        vec = _decode_vector(response.embedding)
+        if vec is None:
+            raise ValueError("Query vectorization returned empty embedding")
+        return vec
+
+    @staticmethod
+    def _flatten_tree(
+        root: SegmentNode,
+    ) -> tuple[list[SegmentNode], list[vectorizer_pb2.FlatNodeInput], list[int]]:
+        original_nodes: list[SegmentNode] = []
+
+        def collect_nodes(node: SegmentNode) -> None:
+            original_nodes.append(node)
+            for child in node.children:
+                collect_nodes(child)
+
+        collect_nodes(root)
+
+        node_to_idx = {id(node): idx for idx, node in enumerate(original_nodes)}
+        flat_inputs: list[vectorizer_pb2.FlatNodeInput] = []
+        child_indices: list[int] = []
+
+        for node in original_nodes:
+            first_edge_idx = len(child_indices)
+            edge_count = len(node.children)
+            for child in node.children:
+                child_indices.append(node_to_idx[id(child)])
+
+            flat_inputs.append(
+                vectorizer_pb2.FlatNodeInput(
+                    name=node.name,
+                    level=node.level,
+                    content=node.content,
+                    first_edge_idx=first_edge_idx,
+                    edge_count=edge_count,
+                )
+            )
+
+        return original_nodes, flat_inputs, child_indices
 
     def vectorize_tree(self, node: SegmentNode) -> VectorizedSegmentNode:
-        raw_content = node.content.strip()
-        if raw_content and node.level > 0:
-            raw_content = f"{'#' * node.level} {node.name}\n{raw_content}"
-        content = self._get_embedding(raw_content)
+        original_nodes, flat_inputs, child_indices = self._flatten_tree(node)
 
-        content_vectors = [embedding for _, embedding in content]
-        all_vectors: list[np.ndarray] = []
+        try:
+            response = self.stub.VectorizeTree(
+                vectorizer_pb2.TreeRequest(
+                    nodes=flat_inputs,
+                    child_indices=child_indices,
+                )
+            )
+        except grpc.RpcError as exc:
+            if exc.code() == grpc.StatusCode.INVALID_ARGUMENT:
+                raise ValueError(exc.details() or "Invalid tree") from exc
+            raise
 
-        if node.level > 0 and node.name.strip():
-            name_embeddings = self._get_embedding(node.name)
-            if name_embeddings:
-                all_vectors.append(name_embeddings[0][1])
+        if len(response.nodes) != len(original_nodes):
+            raise RuntimeError(
+                f"Expected {len(original_nodes)} nodes from vectorizer, got {len(response.nodes)}"
+            )
 
-        if content_vectors:
-            all_vectors.append(self._merge_vectors(content_vectors))
+        vectorized_nodes: list[VectorizedSegmentNode] = []
+        for orig_node, out_node in zip(original_nodes, response.nodes):
+            content_chunks: list[tuple[str, np.ndarray]] = []
+            for chunk in out_node.content:
+                chunk_vec = _decode_vector(chunk.embedding)
+                if chunk_vec is not None:
+                    content_chunks.append((chunk.text, chunk_vec))
 
-        # Рекурсивний виклик через self
-        children = [self.vectorize_tree(child) for child in node.children]
-        all_vectors.extend(child.embedding for child in children if child.embedding is not None)
+            vectorized_nodes.append(
+                VectorizedSegmentNode(
+                    name=orig_node.name,
+                    level=orig_node.level,
+                    embedding=_decode_vector(out_node.embedding),
+                    content=content_chunks,
+                    children=[],
+                )
+            )
 
-        result = self._merge_vectors(all_vectors) if all_vectors else None
+        for idx, flat_in in enumerate(flat_inputs):
+            start = flat_in.first_edge_idx
+            end = start + flat_in.edge_count
+            for edge_pos in range(start, end):
+                child_idx = child_indices[edge_pos]
+                vectorized_nodes[idx].children.append(vectorized_nodes[child_idx])
 
-        return VectorizedSegmentNode(
-            name=node.name,
-            level=node.level,
-            embedding=result,
-            content=content,
-            children=children,
-        )
+        return vectorized_nodes[0]
