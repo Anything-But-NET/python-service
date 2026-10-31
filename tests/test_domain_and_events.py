@@ -10,6 +10,8 @@ from python_service.models.events import (
     DocumentUpdateAclEvent,
     DocumentUpsertEvent,
     event_adapter,
+    KafkaSyncStatusEvent,
+    SyncStatusEnum,
 )
 
 
@@ -110,3 +112,19 @@ def test_settings_and_aliases():
     s1 = get_settings()
     s2 = get_settings()
     assert s1 is s2
+
+def test_kafka_sync_status_event_validation():
+    payload = {
+        "sync_id": "sync-123",
+        "document_id": "doc-456",
+        "status": "FAILED_PARSE",
+        "error_message": "Unsupported format"
+    }
+
+    event = KafkaSyncStatusEvent(**payload)
+
+    assert event.sync_id == "sync-123"
+    assert event.document_id == "doc-456"
+    assert event.status == SyncStatusEnum.FAILED_PARSE
+    assert event.error_message == "Unsupported format"
+    assert event.timestamp > 0

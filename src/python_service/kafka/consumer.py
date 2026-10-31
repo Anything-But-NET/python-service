@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 
 from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
 
@@ -21,19 +22,20 @@ logger = logging.getLogger(__name__)
 
 class IngestionKafkaWorker:
     def __init__(
-        self,
-        parser: MarkdownParserService,
-        vectorizer: VectorizationService,
-        db: RagDbService,
-        kafka_brokers: str | None = None,
-        group_id: str | None = None,
-        topic: str | None = None,
+            self,
+            parser: MarkdownParserService,
+            vectorizer: VectorizationService,
+            db: RagDbService,
+            kafka_brokers: str | None = None,
+            group_id: str | None = None,
+            topic: str | None = None,
     ):
         settings = get_settings()
         self.parser = parser
         self.vectorizer = vectorizer
         self.db = db
         self.topic = topic or settings.kafka_topic
+        self.sync_status_topic = "rag.sync.status.v1"
         self._stop_event = asyncio.Event()
 
         self.consumer = Consumer({
@@ -47,21 +49,62 @@ class IngestionKafkaWorker:
             "bootstrap.servers": kafka_brokers or settings.kafka_brokers,
         })
 
+    def _send_sync_status(self, sync_id: str, document_id: str, status: str, error_message: str = None) -> None:
+        """Helper method to push status back to Java (rag.sync.status.v1)"""
+        payload = {
+            "sync_id": sync_id,
+            "document_id": document_id,
+            "status": status,
+            "error_message": error_message,
+            "timestamp": int(time.time())
+        }
+        try:
+            self.producer.produce(
+                topic=self.sync_status_topic,
+                value=json.dumps(payload).encode("utf-8")
+            )
+            self.producer.poll(0)
+            logger.debug(f"[{sync_id}] Sent sync status {status} for {document_id}")
+        except Exception as e:
+            logger.error(f"[{sync_id}] Failed to send sync status: {e}")
+
     async def _handle_event(self, event: KafkaNewFileDataEvent) -> None:
         if isinstance(event, DocumentUpsertEvent):
             logger.info(f"[{event.sync_id}] UPSERT for document_id: {event.document_id}")
 
-            # Виконуємо CPU/GPU-важкі операції у фоновому потоці, щоб не блокувати event loop FastAPI
-            ast = await asyncio.to_thread(self.parser.parse, event.raw_content)
-            vec_ast = await asyncio.to_thread(self.vectorizer.vectorize_tree, ast)
-            await self.db.save_document_tree(node=vec_ast, document_id=event.document_id)
+            try:
+                # PHASE 1: Parse and Vectorize (CPU-heavy)
+                try:
+                    ast = await asyncio.to_thread(self.parser.parse, event.raw_content)
+                    vec_ast = await asyncio.to_thread(self.vectorizer.vectorize_tree, ast)
+                except Exception as e:
+                    self._send_sync_status(event.sync_id, event.document_id, "FAILED_PARSE", str(e))
+                    raise
 
-            logger.info(f"[{event.sync_id}] Successfully saved: {event.document_id}")
+                # PHASE 2: Storage (DB heavy)
+                try:
+                    await self.db.save_document_tree(node=vec_ast, document_id=event.document_id)
+                except Exception as e:
+                    self._send_sync_status(event.sync_id, event.document_id, "FAILED_STORAGE", str(e))
+                    raise
+
+                # SUCCESS
+                self._send_sync_status(event.sync_id, event.document_id, "COMPLETED")
+                logger.info(f"[{event.sync_id}] Successfully saved: {event.document_id}")
+
+            except Exception:
+                # Catching re-raised exceptions just to let the caller know it failed
+                raise
 
         elif isinstance(event, DocumentDeleteEvent):
             logger.info(f"[{event.sync_id}] DELETE for document_id: {event.document_id}")
-            await self.db.delete_document(event.document_id)
-            logger.info(f"[{event.sync_id}] Successfully deleted: {event.document_id}")
+            try:
+                await self.db.delete_document(event.document_id)
+                self._send_sync_status(event.sync_id, event.document_id, "COMPLETED")
+                logger.info(f"[{event.sync_id}] Successfully deleted: {event.document_id}")
+            except Exception as e:
+                self._send_sync_status(event.sync_id, event.document_id, "FAILED_STORAGE", str(e))
+                raise
 
         elif isinstance(event, DocumentUpdateAclEvent):
             logger.info(f"[{event.sync_id}] Ignoring UPDATE_ACL for {event.document_id}")
@@ -103,7 +146,7 @@ class IngestionKafkaWorker:
                         ('original_partition', str(msg.partition()).encode('utf-8')),
                         ('original_offset', str(msg.offset()).encode('utf-8'))
                     ])
-                    
+
                     self.producer.produce(
                         topic=self.topic + ".dlt",
                         key=msg.key(),
