@@ -24,6 +24,10 @@ class Settings(BaseSettings):
         default="rag.documents.ingestion.v1",
         validation_alias=AliasChoices("KAFKA_TOPIC"),
     )
+    kafka_sync_status_topic: str = Field(
+        default="rag.sync.status.v1",
+        validation_alias=AliasChoices("KAFKA_SYNC_STATUS_TOPIC"),
+    )
     kafka_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices("KAFKA_ENABLED"),

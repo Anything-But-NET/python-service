@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import time
+from contextlib import asynccontextmanager
 
 from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
 
@@ -12,6 +13,7 @@ from python_service.models.events import (
     DocumentUpdateAclEvent,
     DocumentUpsertEvent,
     KafkaNewFileDataEvent,
+    SyncStatusEnum,
     event_adapter,
 )
 from python_service.services.parse_service import MarkdownParserService
@@ -29,13 +31,14 @@ class IngestionKafkaWorker:
             kafka_brokers: str | None = None,
             group_id: str | None = None,
             topic: str | None = None,
+            sync_status_topic: str | None = None,
     ):
         settings = get_settings()
         self.parser = parser
         self.vectorizer = vectorizer
         self.db = db
         self.topic = topic or settings.kafka_topic
-        self.sync_status_topic = "rag.sync.status.v1"
+        self.sync_status_topic = sync_status_topic or settings.kafka_sync_status_topic
         self._stop_event = asyncio.Event()
 
         self.consumer = Consumer({
@@ -49,12 +52,12 @@ class IngestionKafkaWorker:
             "bootstrap.servers": kafka_brokers or settings.kafka_brokers,
         })
 
-    def _send_sync_status(self, sync_id: str, document_id: str, status: str, error_message: str = None) -> None:
-        """Helper method to push status back to Java (rag.sync.status.v1)"""
+    def _send_sync_status(self, sync_id: str, document_id: str, status: SyncStatusEnum, error_message: str = None) -> None:
+        """Helper method to push status to Kafka."""
         payload = {
             "sync_id": sync_id,
             "document_id": document_id,
-            "status": status,
+            "status": status.value,
             "error_message": error_message,
             "timestamp": int(time.time())
         }
@@ -64,9 +67,18 @@ class IngestionKafkaWorker:
                 value=json.dumps(payload).encode("utf-8")
             )
             self.producer.poll(0)
-            logger.debug(f"[{sync_id}] Sent sync status {status} for {document_id}")
+            logger.debug(f"[{sync_id}] Sent sync status {status.value} for {document_id}")
         except Exception as e:
             logger.error(f"[{sync_id}] Failed to send sync status: {e}")
+
+    @asynccontextmanager
+    async def _sync_status_guard(self, sync_id: str, document_id: str, failure_status: SyncStatusEnum):
+        """AOP-style context manager to catch errors and send status automatically."""
+        try:
+            yield
+        except Exception as e:
+            self._send_sync_status(sync_id, document_id, failure_status, str(e))
+            raise
 
     async def _handle_event(self, event: KafkaNewFileDataEvent) -> None:
         if isinstance(event, DocumentUpsertEvent):
@@ -74,22 +86,16 @@ class IngestionKafkaWorker:
 
             try:
                 # PHASE 1: Parse and Vectorize (CPU-heavy)
-                try:
+                async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_PARSE):
                     ast = await asyncio.to_thread(self.parser.parse, event.raw_content)
                     vec_ast = await asyncio.to_thread(self.vectorizer.vectorize_tree, ast)
-                except Exception as e:
-                    self._send_sync_status(event.sync_id, event.document_id, "FAILED_PARSE", str(e))
-                    raise
 
                 # PHASE 2: Storage (DB heavy)
-                try:
+                async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_STORAGE):
                     await self.db.save_document_tree(node=vec_ast, document_id=event.document_id)
-                except Exception as e:
-                    self._send_sync_status(event.sync_id, event.document_id, "FAILED_STORAGE", str(e))
-                    raise
 
                 # SUCCESS
-                self._send_sync_status(event.sync_id, event.document_id, "COMPLETED")
+                self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
                 logger.info(f"[{event.sync_id}] Successfully saved: {event.document_id}")
 
             except Exception:
@@ -99,11 +105,12 @@ class IngestionKafkaWorker:
         elif isinstance(event, DocumentDeleteEvent):
             logger.info(f"[{event.sync_id}] DELETE for document_id: {event.document_id}")
             try:
-                await self.db.delete_document(event.document_id)
-                self._send_sync_status(event.sync_id, event.document_id, "COMPLETED")
+                async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_STORAGE):
+                    await self.db.delete_document(event.document_id)
+
+                self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
                 logger.info(f"[{event.sync_id}] Successfully deleted: {event.document_id}")
-            except Exception as e:
-                self._send_sync_status(event.sync_id, event.document_id, "FAILED_STORAGE", str(e))
+            except Exception:
                 raise
 
         elif isinstance(event, DocumentUpdateAclEvent):
