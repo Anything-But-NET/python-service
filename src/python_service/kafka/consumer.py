@@ -52,7 +52,7 @@ class IngestionKafkaWorker:
             "bootstrap.servers": kafka_brokers or settings.kafka_brokers,
         })
 
-    def _send_sync_status(self, sync_id: str, document_id: str, status: SyncStatusEnum, error_message: str = None) -> None:
+    def _send_sync_status(self, sync_id: str, document_id: str, status: SyncStatusEnum, error_message: str | None = None) -> None:
         """Helper method to push status to Kafka."""
         payload = {
             "sync_id": sync_id,
