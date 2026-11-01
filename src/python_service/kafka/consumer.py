@@ -80,35 +80,39 @@ class IngestionKafkaWorker:
             self._send_sync_status(sync_id, document_id, failure_status, str(e))
             raise
 
-    async def _handle_event(self, event: KafkaNewFileDataEvent) -> None:
-        if isinstance(event, DocumentUpsertEvent):
-            logger.info(f"[{event.sync_id}] UPSERT for document_id: {event.document_id}")
+async def _handle_event(self, event: KafkaNewFileDataEvent) -> None:
+    if isinstance(event, DocumentUpsertEvent):
+        logger.info(f"[{event.sync_id}] UPSERT for document_id: {event.document_id}")
 
-            # PHASE 1: Parse and Vectorize (CPU-heavy)
-            async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_PARSE):
-                ast = await asyncio.to_thread(self.parser.parse, event.raw_content)
-                vec_ast = await asyncio.to_thread(self.vectorizer.vectorize_tree, ast)
+        self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.IN_PROGRESS)
 
-            # PHASE 2: Storage (DB heavy)
-            async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_STORAGE):
-                await self.db.save_document_tree(node=vec_ast, document_id=event.document_id)
+        # PHASE 1: Parse and Vectorize (CPU-heavy)
+        async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_PARSE):
+            ast = await asyncio.to_thread(self.parser.parse, event.raw_content)
+            vec_ast = await asyncio.to_thread(self.vectorizer.vectorize_tree, ast)
 
-            # SUCCESS
-            self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
-            logger.info(f"[{event.sync_id}] Successfully saved: {event.document_id}")
+        # PHASE 2: Storage (DB heavy)
+        async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_STORAGE):
+            await self.db.save_document_tree(node=vec_ast, document_id=event.document_id)
 
-        elif isinstance(event, DocumentDeleteEvent):
-            logger.info(f"[{event.sync_id}] DELETE for document_id: {event.document_id}")
+        # SUCCESS
+        self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
+        logger.info(f"[{event.sync_id}] Successfully saved: {event.document_id}")
 
-            async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_STORAGE):
-                await self.db.delete_document(event.document_id)
+    elif isinstance(event, DocumentDeleteEvent):
+        logger.info(f"[{event.sync_id}] DELETE for document_id: {event.document_id}")
 
-            self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
-            logger.info(f"[{event.sync_id}] Successfully deleted: {event.document_id}")
+        self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.IN_PROGRESS)
 
-        elif isinstance(event, DocumentUpdateAclEvent):
-            logger.info(f"[{event.sync_id}] Ignoring UPDATE_ACL for {event.document_id}")
-            self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
+        async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_STORAGE):
+            await self.db.delete_document(event.document_id)
+
+        self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
+        logger.info(f"[{event.sync_id}] Successfully deleted: {event.document_id}")
+
+    elif isinstance(event, DocumentUpdateAclEvent):
+        logger.info(f"[{event.sync_id}] Ignoring UPDATE_ACL for {event.document_id}")
+        self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
 
     async def start_consuming(self) -> None:
         self._stop_event.clear()
