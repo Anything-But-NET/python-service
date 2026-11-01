@@ -5,7 +5,6 @@ from python_service.config import get_settings
 from python_service.grpc_gen import vectorizer_pb2, vectorizer_pb2_grpc
 from python_service.models.domain import SegmentNode, VectorizedSegmentNode
 
-
 MAX_MESSAGE_LENGTH = 50 * 1024 * 1024  # 50 MB
 GRPC_CHANNEL_OPTIONS = [
     ("grpc.max_send_message_length", MAX_MESSAGE_LENGTH),
@@ -21,11 +20,13 @@ def _decode_vector(raw_bytes: bytes) -> np.ndarray | None:
 
 class VectorizationService:
     def __init__(
-        self,
-        grpc_target: str | None = None,
-        channel: grpc.Channel | None = None,
+            self,
+            grpc_target: str | None = None,
+            channel: grpc.Channel | None = None,
     ):
-        self.grpc_target = grpc_target or get_settings().vectorizer_grpc_target
+        settings = get_settings()
+        self.grpc_target = grpc_target or settings.vectorizer_grpc_target
+        self.timeout = settings.vectorizer_grpc_timeout
         self._owns_channel = channel is None
         self.channel = channel or grpc.insecure_channel(
             self.grpc_target,
@@ -43,7 +44,8 @@ class VectorizationService:
 
         try:
             response = self.stub.VectorizeQuery(
-                vectorizer_pb2.QueryRequest(query=query)
+                vectorizer_pb2.QueryRequest(query=query),
+                timeout=self.timeout
             )
         except grpc.RpcError as exc:
             if exc.code() == grpc.StatusCode.INVALID_ARGUMENT:
@@ -57,7 +59,7 @@ class VectorizationService:
 
     @staticmethod
     def _flatten_tree(
-        root: SegmentNode,
+            root: SegmentNode,
     ) -> tuple[list[SegmentNode], list[vectorizer_pb2.FlatNodeInput], list[int]]:
         original_nodes: list[SegmentNode] = []
 
@@ -98,7 +100,8 @@ class VectorizationService:
                 vectorizer_pb2.TreeRequest(
                     nodes=flat_inputs,
                     child_indices=child_indices,
-                )
+                ),
+                timeout=self.timeout
             )
         except grpc.RpcError as exc:
             if exc.code() == grpc.StatusCode.INVALID_ARGUMENT:

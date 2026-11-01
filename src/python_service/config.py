@@ -5,6 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    
     # Database settings
     db_url: str = Field(
         default="postgresql://postgres:postgres@localhost:5433/postgres",
@@ -41,6 +43,10 @@ class Settings(BaseSettings):
             "VECTORIZER_GRPC_URL",
             "VECTORIZER_URL",
         ),
+    )
+    vectorizer_grpc_timeout: float = Field(
+        default=30.0,
+        validation_alias=AliasChoices("VECTORIZER_GRPC_TIMEOUT"),
     )
     vector_size: int = Field(
         default=1024,

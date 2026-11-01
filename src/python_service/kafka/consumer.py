@@ -108,14 +108,15 @@ class IngestionKafkaWorker:
 
         elif isinstance(event, DocumentUpdateAclEvent):
             logger.info(f"[{event.sync_id}] Ignoring UPDATE_ACL for {event.document_id}")
+            self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
 
     async def start_consuming(self) -> None:
         self._stop_event.clear()
         await asyncio.to_thread(self.consumer.subscribe, [self.topic])
         logger.info(f"Listening to Kafka topic: {self.topic}...")
 
-        try:
-            while not self._stop_event.is_set():
+        while not self._stop_event.is_set():
+            try:
                 msg = await asyncio.to_thread(self.consumer.poll, 1.0)
                 if msg is None:
                     continue
@@ -148,7 +149,7 @@ class IngestionKafkaWorker:
                     ])
 
                     self.producer.produce(
-                        topic=self.topic + ".dlt",
+                        topic=self.topic + ".DLT",
                         key=msg.key(),
                         value=msg.value(),
                         headers=headers
@@ -156,14 +157,21 @@ class IngestionKafkaWorker:
                     self.producer.poll(0)
                     logger.error(f"Failed processing message: {e}", exc_info=True)
                 finally:
-                    await asyncio.to_thread(self.consumer.commit, asynchronous=False)
-        except KafkaException as e:
-            logger.error(f"Kafka exception waiting: {e}", exc_info=True)
-            await asyncio.sleep(5)
-        except asyncio.CancelledError:
-            logger.info("Kafka consumer task cancelled, shutting down...")
-        finally:
-            await asyncio.to_thread(self.consumer.close)
+                    await asyncio.to_thread(self.consumer.commit, asynchronous=True)
+
+            except KafkaException as e:
+                logger.error(f"Kafka exception in poll loop: {e}", exc_info=True)
+                await asyncio.sleep(5)
+            except asyncio.CancelledError:
+                logger.info("Kafka consumer task cancelled...")
+                break
+            except Exception as e:
+                logger.error(f"Unexpected error in consumer loop: {e}", exc_info=True)
+                await asyncio.sleep(5)
+
+        await asyncio.to_thread(self.consumer.close)
 
     def stop(self) -> None:
         self._stop_event.set()
+        logger.info("Flushing producer buffers...")
+        self.producer.flush(10.0)
