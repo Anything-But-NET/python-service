@@ -1,6 +1,7 @@
 import uuid
-from typing import Annotated, Literal
-
+import time
+from typing import Annotated, Literal, Optional
+from enum import Enum
 from pydantic import BaseModel, Field, TypeAdapter
 
 
@@ -41,3 +42,20 @@ KafkaNewFileDataEvent = Annotated[
 ]
 
 event_adapter: TypeAdapter[KafkaNewFileDataEvent] = TypeAdapter(KafkaNewFileDataEvent)
+
+
+#Ingest Error Handling
+class SyncStatusEnum(str, Enum):
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    FAILED_FETCH = "FAILED_FETCH"
+    FAILED_PARSE = "FAILED_PARSE"
+    FAILED_STORAGE = "FAILED_STORAGE"
+
+
+class KafkaSyncStatusEvent(BaseModel):
+    sync_id: str
+    document_id: str
+    status: SyncStatusEnum
+    error_message: Optional[str] = None
+    timestamp: int = Field(default_factory=lambda: int(time.time()))
