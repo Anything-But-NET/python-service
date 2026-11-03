@@ -1,10 +1,11 @@
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
 
-from python_service.db.entities import Chunks, Documents, VectorNode
+from python_service.db.entities import Chunks, RagDocument, VectorNode
 from python_service.db.service import (
     RagDbService,
     _normalize_db_url,
@@ -42,7 +43,6 @@ def mock_db_service():
     mock_session = AsyncMock()
     mock_session.add = MagicMock()
     mock_session.get = AsyncMock(return_value=None)
-    service._get_documents_by_ids = AsyncMock(return_value={})
     # async with service.session_factory() as session
     service.session_factory = MagicMock()
     service.session_factory.return_value.__aenter__.return_value = mock_session
@@ -60,7 +60,7 @@ async def test_init_schema_and_close(mock_db_service):
 
     # PostgreSQL dialect
     await service.init_schema()
-    mock_conn.execute.assert_awaited_once()
+    assert mock_conn.execute.await_count == 2
     mock_conn.run_sync.assert_awaited_once()
 
     # Non-postgres dialect
@@ -94,14 +94,18 @@ async def test_save_document_tree_success_and_rollback(mock_db_service):
         children=[child_vec_node],
     )
 
-    chunk_ids = await service.save_document_tree(root, document_id="doc-1")
+    chunk_ids = await service.save_document_tree(
+        root,
+        document_id="doc-1",
+        allowed_groups=["developer"],
+    )
     assert len(chunk_ids) >= 2
     mock_session.commit.assert_awaited_once()
 
     # Test rollback on error
     mock_session.commit.side_effect = RuntimeError("DB commit failed")
     with pytest.raises(RuntimeError):
-        await service.save_document_tree(root, document_id="doc-1")
+        await service.save_document_tree(root, document_id="doc-1", allowed_groups=["developer"])
     mock_session.rollback.assert_awaited_once()
 
 
@@ -164,12 +168,20 @@ async def test_delete_document(mock_db_service):
 async def test_get_point(mock_db_service):
     service, _, mock_session = mock_db_service
 
-    fake_node = VectorNode(id=uuid.uuid4(), children_count=0, embedding=[0.0] * 1024)
+    fake_node = VectorNode(
+        id=uuid.uuid4(),
+        children_count=0,
+        embedding=[0.0] * 1024,
+        document_id="doc-1",
+    )
     scalars_mock = MagicMock()
     scalars_mock.first.return_value = fake_node
     mock_session.scalars.return_value = scalars_mock
 
-    node = await service.get_point(fake_node.id)
+    node = await service.get_point(
+        fake_node.id,
+        allowed_groups=["developer"],
+    )
     assert node is fake_node
 
 
@@ -183,17 +195,28 @@ async def test_search_points(mock_db_service):
     mock_session.execute.return_value = execute_mock
 
     # Test with only_leaves=True and False
-    res_leaves = await service.search_points(np.zeros(1024), limit=5, only_leaves=True)
+    res_leaves = await service.search_points(
+        np.zeros(1024),
+        allowed_groups=["developer"],
+        limit=5,
+        only_leaves=True,
+    )
     assert len(res_leaves) == 1
     assert res_leaves[0][1] == 0.88
 
-    res_all = await service.search_points(np.zeros(1024), limit=5, only_leaves=False)
+
+    res_all = await service.search_points(
+        np.zeros(1024),
+        allowed_groups=["developer"],
+        limit=5,
+        only_leaves=False,
+    )
     assert len(res_all) == 1
 
 
 @pytest.mark.asyncio
 async def test_auto_merge_points_and_query_with_auto_merge(mock_db_service):
-    service, _, mock_session = mock_db_service
+    service, _, _ = mock_db_service
 
     # Setup parent and 2 children
     parent_id = uuid.uuid4()
@@ -209,6 +232,7 @@ async def test_auto_merge_points_and_query_with_auto_merge(mock_db_service):
         id=parent_id,
         parent_id=None,
         children_count=2,
+        document_id="doc-1",
         embedding=parent_emb,
         chunks=[chunk1, chunk2],
     )
@@ -217,6 +241,7 @@ async def test_auto_merge_points_and_query_with_auto_merge(mock_db_service):
         id=child1_id,
         parent_id=parent_id,
         children_count=0,
+        document_id="doc-1",
         embedding=[0.9] + [0.0] * 1023,
         chunks=[chunk1],
     )
@@ -224,12 +249,13 @@ async def test_auto_merge_points_and_query_with_auto_merge(mock_db_service):
         id=child2_id,
         parent_id=parent_id,
         children_count=0,
+        document_id="doc-1",
         embedding=[0.85] + [0.0] * 1023,
         chunks=[chunk2],
     )
 
     # Mock get_point when parent is resolved from DB
-    async def fake_get_point(pid):
+    async def fake_get_point(pid, allowed_groups):
         if pid == parent_id:
             return parent_node
         return None
@@ -245,6 +271,7 @@ async def test_auto_merge_points_and_query_with_auto_merge(mock_db_service):
         points=initial_points,
         query_vector=query_vector,
         threshold=0.5,
+        allowed_groups=["developer"]
     )
     # Both children should be auto-merged into parent_node
     assert len(merged) == 1
@@ -253,7 +280,12 @@ async def test_auto_merge_points_and_query_with_auto_merge(mock_db_service):
 
     # Test query_with_auto_merge
     with patch.object(service, "search_points", return_value=initial_points):
-        dict_results = await service.query_with_auto_merge(query_vector, limit=10, threshold=0.5)
+        dict_results = await service.query_with_auto_merge(
+            query_vector,
+            allowed_groups=["developer"],
+            limit=10,
+            threshold=0.5,
+        )
         assert len(dict_results) == 1
         res = dict_results[0]
         assert res["point_id"] == str(parent_id)
@@ -262,118 +294,126 @@ async def test_auto_merge_points_and_query_with_auto_merge(mock_db_service):
 
 
 @pytest.mark.asyncio
-async def test_upsert_document_metadata_only_updates_supplied_values(mock_db_service):
+async def test_upsert_rag_document_saves_acl_and_metadata(mock_db_service):
     service, _, mock_session = mock_db_service
 
-    await service._upsert_document_metadata(
+    await service._upsert_rag_document(
         session=mock_session,
         document_id="doc-metadata",
-        title="  Architecture Guide  ",
-        url="https://example.test/architecture",
-        source_system="sharepoint",
+        allowed_groups=[" developer ", "developer", "finance"],
         last_updated="2026-11-01T12:00:00Z",
     )
 
     stored = next(
         call.args[0]
         for call in mock_session.add.call_args_list
-        if isinstance(call.args[0], Documents)
+        if isinstance(call.args[0], RagDocument)
     )
+
     assert stored.document_id == "doc-metadata"
-    assert stored.title == "Architecture Guide"
-    assert stored.url == "https://example.test/architecture"
-    assert stored.source_system == "sharepoint"
-    assert stored.last_updated == "2026-11-01T12:00:00Z"
+    assert stored.allowed_groups == ["developer", "finance"]
+    assert stored.last_updated == datetime.fromisoformat(
+        "2026-11-01T12:00:00+00:00"
+    )
+    assert stored.last_sync_at is not None
     mock_session.flush.assert_awaited()
 
 
 @pytest.mark.asyncio
-async def test_upsert_document_metadata_preserves_existing_values_when_missing(mock_db_service):
+async def test_upsert_rag_document_preserves_last_updated_when_missing(
+    mock_db_service,
+):
     service, _, mock_session = mock_db_service
-    existing = Documents(
+
+    original_date = datetime(2026, 11, 1, 12, 0, tzinfo=UTC)
+    existing = RagDocument(
         document_id="doc-existing",
-        title="Existing title",
-        url="https://example.test/existing",
-        source_system="sharepoint",
+        allowed_groups=["developer"],
+        last_updated=original_date,
+        last_sync_at=original_date,
     )
     mock_session.get.return_value = existing
 
-    await service._upsert_document_metadata(
+    await service._upsert_rag_document(
         session=mock_session,
         document_id="doc-existing",
+        allowed_groups=["finance"],
     )
 
-    assert existing.title == "Existing title"
-    assert existing.url == "https://example.test/existing"
-    assert existing.source_system == "sharepoint"
+    assert existing.allowed_groups == ["finance"]
+    assert existing.last_updated == original_date
+    assert existing.last_sync_at >= original_date
     mock_session.add.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_query_with_auto_merge_returns_deduplicated_source_citations(mock_db_service):
+async def test_query_with_auto_merge_returns_source_citations(mock_db_service):
     service, _, _ = mock_db_service
 
-    doc_a_chunk_1 = Chunks(
+    chunk_a1 = Chunks(
         id=uuid.uuid4(),
         text="Evidence from document A, section 1",
         document_id="doc-a",
     )
-    doc_b_chunk = Chunks(
-        id=uuid.uuid4(),
-        text="Evidence from document B",
-        document_id="doc-b",
-    )
-    doc_a_chunk_2 = Chunks(
+    chunk_a2 = Chunks(
         id=uuid.uuid4(),
         text="Evidence from document A, section 2",
         document_id="doc-a",
     )
-    point = VectorNode(
+    chunk_b = Chunks(
+        id=uuid.uuid4(),
+        text="Evidence from document B",
+        document_id="doc-b",
+    )
+
+    point_a = VectorNode(
         id=uuid.uuid4(),
         parent_id=None,
         children_count=0,
         embedding=[0.0] * 1024,
-        chunks=[doc_a_chunk_1, doc_b_chunk, doc_a_chunk_2],
-    )
-    document_a = Documents(
         document_id="doc-a",
-        title="Document A",
-        url="https://example.test/a",
+        chunks=[chunk_a1, chunk_a2],
     )
-    document_b = Documents(
+    point_b = VectorNode(
+        id=uuid.uuid4(),
+        parent_id=None,
+        children_count=0,
+        embedding=[0.0] * 1024,
         document_id="doc-b",
-        title="Document B",
-        url="https://example.test/b",
+        chunks=[chunk_b],
     )
-    service.search_points = AsyncMock(return_value=[(point, 0.91)])
-    service.auto_merge_points = AsyncMock(return_value=[(point, 0.91)])
-    service._get_documents_by_ids = AsyncMock(
-        return_value={"doc-a": document_a, "doc-b": document_b}
-    )
+
+    points = [(point_a, 0.91), (point_b, 0.88)]
+
+    service.search_points = AsyncMock(return_value=points)
+    service.auto_merge_points = AsyncMock(return_value=points)
 
     results = await service.query_with_auto_merge(
         vector=np.zeros(1024),
+        allowed_groups=["developer"],
         limit=10,
         threshold=0.5,
     )
 
-    assert len(results) == 1
-    result = results[0]
-    assert result["document_id"] == "doc-a"
-    assert result["document_ids"] == ["doc-a", "doc-b"]
-    assert result["citations"] == [
+    assert len(results) == 2
+
+    results_by_document = {
+        result["document_id"]: result
+        for result in results
+    }
+
+    assert results_by_document["doc-a"]["citations"] == [
         {
-            "title": "Document A",
-            "url": "https://example.test/a",
             "doc_id": "doc-a",
-            "chunk_ids": [str(doc_a_chunk_1.id), str(doc_a_chunk_2.id)],
-        },
+            "chunk_ids": [str(chunk_a1.id), str(chunk_a2.id)],
+        }
+    ]
+
+    assert results_by_document["doc-b"]["citations"] == [
         {
-            "title": "Document B",
-            "url": "https://example.test/b",
             "doc_id": "doc-b",
-            "chunk_ids": [str(doc_b_chunk.id)],
-        },
+            "chunk_ids": [str(chunk_b.id)],
+        }
     ]
 
 
@@ -386,18 +426,19 @@ async def test_query_with_auto_merge_does_not_fabricate_missing_metadata(mock_db
         parent_id=None,
         children_count=0,
         embedding=[0.0] * 1024,
+        document_id="doc-without-metadata",
         chunks=[chunk],
     )
     service.search_points = AsyncMock(return_value=[(point, 0.9)])
     service.auto_merge_points = AsyncMock(return_value=[(point, 0.9)])
-    service._get_documents_by_ids = AsyncMock(return_value={})
 
-    results = await service.query_with_auto_merge(np.zeros(1024))
+    results = await service.query_with_auto_merge(
+        np.zeros(1024),
+        allowed_groups=["developer"],
+    )
 
     assert results[0]["citations"] == [
         {
-            "title": None,
-            "url": None,
             "doc_id": "doc-without-metadata",
             "chunk_ids": [str(chunk.id)],
         }
@@ -405,12 +446,13 @@ async def test_query_with_auto_merge_does_not_fabricate_missing_metadata(mock_db
 
 
 @pytest.mark.asyncio
-async def test_delete_document_removes_source_metadata(mock_db_service):
+async def test_delete_document_removes_rag_document(mock_db_service):
     service, _, mock_session = mock_db_service
-    document = Documents(
+
+    document = RagDocument(
         document_id="doc-delete",
-        title="Document to delete",
-        url="https://example.test/delete",
+        allowed_groups=["developer"],
+        last_sync_at=datetime.now(UTC),
     )
     mock_session.get.return_value = document
 
@@ -419,23 +461,16 @@ async def test_delete_document_removes_source_metadata(mock_db_service):
     mock_session.delete.assert_awaited_once_with(document)
     mock_session.commit.assert_awaited_once()
 
-
 @pytest.mark.asyncio
-async def test_upsert_document_metadata_clears_explicitly_empty_values(mock_db_service):
+async def test_upsert_rag_document_rejects_empty_acl(mock_db_service):
     service, _, mock_session = mock_db_service
-    existing = Documents(
-        document_id="doc-cleared",
-        title="Old title",
-        url="https://example.test/old",
-    )
-    mock_session.get.return_value = existing
 
-    await service._upsert_document_metadata(
-        session=mock_session,
-        document_id="doc-cleared",
-        title="",
-        url="   ",
-    )
+    with pytest.raises(ValueError, match="at least one allowed group"):
+        await service._upsert_rag_document(
+            session=mock_session,
+            document_id="doc-empty-acl",
+            allowed_groups=[],
+        )
 
-    assert existing.title is None
-    assert existing.url is None
+    mock_session.add.assert_not_called()
+    mock_session.flush.assert_not_awaited()

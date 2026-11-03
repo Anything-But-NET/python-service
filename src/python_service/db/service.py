@@ -1,6 +1,7 @@
 import uuid
 from collections import defaultdict, deque
 from collections.abc import Iterable
+from datetime import UTC, datetime
 
 import numpy as np
 from sqlalchemy import delete, select, text
@@ -16,7 +17,7 @@ from python_service.config import get_settings
 from python_service.db.entities import (
     Base,
     Chunks,
-    Documents,
+    RagDocument,
     VectorNode,
     vector_chunk_association,
 )
@@ -56,24 +57,62 @@ class RagDbService:
             expire_on_commit=False,
         )
 
+    async def update_document_acl(
+        self,
+        document_id: str,
+        allowed_groups: list[str],
+    ) -> None:
+        groups = list(dict.fromkeys(
+            group.strip()
+            for group in allowed_groups
+            if group and group.strip()
+        ))
+
+        if not groups:
+            raise ValueError(
+                f"Document {document_id} must have at least one allowed group"
+            )
+
+        async with self.session_factory() as session:
+            try:
+                document = await session.get(RagDocument, document_id)
+
+                if document is None:
+                    raise ValueError(
+                        f"Document {document_id} does not exist"
+                    )
+
+                document.allowed_groups = groups
+                document.last_sync_at = datetime.now(UTC)
+
+                await session.commit()
+
+            except Exception:
+                await session.rollback()
+                raise
+
     async def init_schema(self) -> None:
         async with self.engine.begin() as conn:
             if self.engine.dialect.name == "postgresql":
                 await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                await conn.execute(text("CREATE SCHEMA IF NOT EXISTS rag"))
+
             await conn.run_sync(Base.metadata.create_all)
 
     async def close(self) -> None:
         await self.engine.dispose()
 
-    async def _clear_document_data(self, session: AsyncSession, document_id: str) -> None:
-        chunk_ids_subq = select(Chunks.id).where(Chunks.document_id == document_id).scalar_subquery()
-
-        node_ids_subq = select(vector_chunk_association.c.vector_node_id).where(
-            vector_chunk_association.c.chunk_id.in_(chunk_ids_subq)
-        ).scalar_subquery()
-
-        await session.execute(delete(VectorNode).where(VectorNode.id.in_(node_ids_subq)))
-        await session.execute(delete(Chunks).where(Chunks.document_id == document_id))
+    async def _clear_document_data(
+        self,
+        session: AsyncSession,
+        document_id: str,
+    ) -> None:
+        await session.execute(
+            delete(VectorNode).where(VectorNode.document_id == document_id)
+        )
+        await session.execute(
+            delete(Chunks).where(Chunks.document_id == document_id)
+        )
 
     async def _save_leaf_chunks(
         self,
@@ -91,6 +130,7 @@ class RagDbService:
                 parent_id=parent_id,
                 children_count=0,
                 embedding=_to_vector_list(chunk_vec),
+                document_id=document_id,
             )
             session.add(chunk)
             session.add(leaf_node)
@@ -136,6 +176,7 @@ class RagDbService:
             parent_id=parent_id,
             children_count=direct_children_count,
             embedding=_to_vector_list(node.embedding),
+            document_id=document_id,
         )
         session.add(parent_node)
         await session.flush()
@@ -173,65 +214,69 @@ class RagDbService:
 
         return all_chunk_ids
 
-    async def _upsert_document_metadata(
+    async def _upsert_rag_document(
         self,
         session: AsyncSession,
         document_id: str,
-        title: str | None = None,
-        url: str | None = None,
-        source_system: str | None = None,
-        last_updated: str | None = None,
+        allowed_groups: list[str],
+        last_updated: datetime | str | None = None,
     ) -> None:
-        document = await session.get(Documents, document_id)
-        if document is None:
-            document = Documents(document_id=document_id)
-            session.add(document)
+        groups = list(dict.fromkeys(
+            group.strip()
+            for group in allowed_groups
+            if group and group.strip()
+        ))
 
-        # Update only metadata actually supplied by the producer. Missing metadata
-        # must not erase previously persisted values or be replaced with guesses.
-        if title is not None:
-            document.title = title.strip() or None
-        if url is not None:
-            document.url = url.strip() or None
-        if source_system is not None:
-            document.source_system = source_system.strip() or None
-        if last_updated is not None:
-            document.last_updated = last_updated.strip() or None
+        if not groups:
+            raise ValueError(
+                f"Document {document_id} must have at least one allowed group"
+            )
+
+        if isinstance(last_updated, str):
+            last_updated = last_updated.strip()
+            last_updated = (
+                datetime.fromisoformat(last_updated)
+                if last_updated
+                else None
+            )
+
+        if last_updated is not None and last_updated.tzinfo is None:
+            last_updated = last_updated.replace(tzinfo=UTC)
+
+        document = await session.get(RagDocument, document_id)
+
+        if document is None:
+            document = RagDocument(
+                document_id=document_id,
+                allowed_groups=groups,
+                last_updated=last_updated,
+                last_sync_at=datetime.now(UTC),
+            )
+            session.add(document)
+        else:
+            document.allowed_groups = groups
+            if last_updated is not None:
+                document.last_updated = last_updated
+            document.last_sync_at = datetime.now(UTC)
 
         await session.flush()
-
-    async def _get_documents_by_ids(
-        self,
-        document_ids: list[str],
-    ) -> dict[str, Documents]:
-        if not document_ids:
-            return {}
-
-        async with self.session_factory() as session:
-            result = await session.scalars(
-                select(Documents).where(Documents.document_id.in_(document_ids))
-            )
-            return {document.document_id: document for document in result.all()}
 
     async def save_document_tree(
         self,
         node: VectorizedSegmentNode,
         document_id: str,
-        title: str | None = None,
-        url: str | None = None,
-        source_system: str | None = None,
-        last_updated: str | None = None,
+        allowed_groups: list[str],
+        last_updated: datetime | str | None = None,
     ) -> list[uuid.UUID]:
         async with self.session_factory() as session:
             try:
-                await self._upsert_document_metadata(
+                await self._upsert_rag_document(
                     session=session,
                     document_id=document_id,
-                    title=title,
-                    url=url,
-                    source_system=source_system,
+                    allowed_groups=allowed_groups,
                     last_updated=last_updated,
                 )
+
                 await self._clear_document_data(session, document_id)
 
                 chunk_ids = await self._save_node_recursive(
@@ -240,19 +285,42 @@ class RagDbService:
                     document_id=document_id,
                     parent_id=None,
                 )
+
                 await session.commit()
                 return chunk_ids
+
             except Exception:
                 await session.rollback()
                 raise
 
-    async def get_point(self, point_id: uuid.UUID | str) -> VectorNode | None:
+    async def get_point(
+        self,
+        point_id: uuid.UUID | str,
+        allowed_groups: list[str],
+    ) -> VectorNode | None:
+        groups = list(dict.fromkeys(
+            group.strip()
+            for group in allowed_groups
+            if group and group.strip()
+        ))
+
+        if not groups:
+            return None
+
         pid = _to_uuid(point_id)
+
         async with self.session_factory() as session:
             stmt = (
                 select(VectorNode)
+                .join(
+                    RagDocument,
+                    RagDocument.document_id == VectorNode.document_id,
+                )
                 .options(selectinload(VectorNode.chunks))
-                .where(VectorNode.id == pid)
+                .where(
+                    VectorNode.id == pid,
+                    RagDocument.allowed_groups.overlap(groups),
+                )
             )
             result = await session.scalars(stmt)
             return result.first()
@@ -260,19 +328,35 @@ class RagDbService:
     async def search_points(
         self,
         vector: np.ndarray | list[float],
+        allowed_groups: list[str],
         limit: int = 20,
         only_leaves: bool = True,
     ) -> list[tuple[VectorNode, float]]:
+        groups = list(dict.fromkeys(
+            group.strip()
+            for group in allowed_groups
+            if group and group.strip()
+        ))
+
+        if not groups:
+            raise ValueError("Cannot search without user permission groups")
+
         vec_list = _to_vector_list(vector)
         distance_expr = VectorNode.embedding.cosine_distance(vec_list)
         score_expr = (1.0 - distance_expr).label("score")
 
         stmt = (
             select(VectorNode, score_expr)
+            .join(
+                RagDocument,
+                RagDocument.document_id == VectorNode.document_id,
+            )
+            .where(RagDocument.allowed_groups.overlap(groups))
             .options(selectinload(VectorNode.chunks))
             .order_by(distance_expr)
             .limit(limit)
         )
+
         if only_leaves:
             stmt = stmt.where(VectorNode.children_count == 0)
 
@@ -285,6 +369,7 @@ class RagDbService:
         self,
         points: Iterable[tuple[VectorNode, float] | VectorNode],
         query_vector: np.ndarray | list[float],
+        allowed_groups: list[str],
         threshold: float = 0.5,
     ) -> list[tuple[VectorNode, float]]:
         q_vec = _to_vector_list(query_vector)
@@ -326,7 +411,10 @@ class RagDbService:
             if not children_ids:
                 continue
 
-            parent_point = nodes_cache.get(parent_id) or await self.get_point(parent_id)
+            parent_point = nodes_cache.get(parent_id) or await self.get_point(
+                parent_id,
+                allowed_groups,
+            )
             if parent_point is None:
                 continue
             nodes_cache[parent_id] = parent_point
@@ -384,25 +472,26 @@ class RagDbService:
     async def query_with_auto_merge(
         self,
         vector: np.ndarray | list[float],
+        allowed_groups: list[str],
         limit: int = 20,
         threshold: float = 0.5,
     ) -> list[dict]:
-        initial_points = await self.search_points(vector, limit=limit, only_leaves=True)
+        initial_points = await self.search_points(
+            vector,
+            allowed_groups=allowed_groups,
+            limit=limit,
+            only_leaves=True,
+        )
         merged_points = await self.auto_merge_points(
             initial_points,
             query_vector=vector,
+            allowed_groups=allowed_groups,
             threshold=threshold,
         )
 
         # Fetch all source records in one query. A merged vector node can contain
         # chunks from more than one document, so never infer provenance from the
         # first chunk alone.
-        all_document_ids = list(dict.fromkeys(
-            chunk.document_id
-            for point, _ in merged_points
-            for chunk in point.chunks
-        ))
-        documents_by_id = await self._get_documents_by_ids(all_document_ids)
 
         results: list[dict] = []
         for point, score in merged_points:
@@ -414,15 +503,13 @@ class RagDbService:
                 if chunk_id not in ids:
                     ids.append(chunk_id)
 
-            citations = []
-            for document_id, chunk_ids in chunk_ids_by_document.items():
-                document = documents_by_id.get(document_id)
-                citations.append({
-                    "title": document.title if document is not None else None,
-                    "url": document.url if document is not None else None,
+            citations = [
+                {
                     "doc_id": document_id,
                     "chunk_ids": chunk_ids,
-                })
+                }
+                for document_id, chunk_ids in chunk_ids_by_document.items()
+            ]
 
             document_ids = list(chunk_ids_by_document)
             results.append({
@@ -447,7 +534,7 @@ class RagDbService:
         async with self.session_factory() as session:
             try:
                 await self._clear_document_data(session, document_id)
-                document = await session.get(Documents, document_id)
+                document = await session.get(RagDocument, document_id)
                 if document is not None:
                     await session.delete(document)
                 await session.commit()

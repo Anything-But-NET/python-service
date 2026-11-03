@@ -25,6 +25,7 @@ async def search_documents(
     query_vec = await asyncio.to_thread(vectorizer.vectorize_query, payload.query)
     results = await db.query_with_auto_merge(
         vector=query_vec,
+        allowed_groups=payload.user_permissions.allowed_groups,
         limit=payload.limit,
         threshold=payload.threshold,
     )

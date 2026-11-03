@@ -14,7 +14,6 @@ from python_service.models.events import (
     DocumentUpsertEvent,
     KafkaNewFileDataEvent,
     SyncStatusEnum,
-    event_adapter,
 )
 from python_service.services.parse_service import MarkdownParserService
 from python_service.services.transform_service import VectorizationService
@@ -100,18 +99,8 @@ class IngestionKafkaWorker:
                 await self.db.save_document_tree(
                     node=vec_ast,
                     document_id=event.document_id,
-                    title=event.title if "title" in event.model_fields_set else None,
-                    url=event.url if "url" in event.model_fields_set else None,
-                    source_system=(
-                        event.source_system
-                        if "source_system" in event.model_fields_set
-                        else None
-                    ),
-                    last_updated=(
-                        event.last_updated
-                        if "last_updated" in event.model_fields_set
-                        else None
-                    ),
+                    allowed_groups=event.acl.allowed_groups,
+                    last_updated=event.last_updated,
                 )
 
             # SUCCESS
@@ -130,8 +119,27 @@ class IngestionKafkaWorker:
             logger.info(f"[{event.sync_id}] Successfully deleted: {event.document_id}")
 
         elif isinstance(event, DocumentUpdateAclEvent):
-            logger.info(f"[{event.sync_id}] Ignoring UPDATE_ACL for {event.document_id}")
-            self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
+            logger.info(
+                "[%s] UPDATE_ACL for document_id: %s",
+                event.sync_id,
+                event.document_id,
+            )
+
+            async with self._sync_status_guard(
+                event.sync_id,
+                event.document_id,
+                SyncStatusEnum.FAILED_STORAGE,
+            ):
+                await self.db.update_document_acl(
+                    document_id=event.document_id,
+                    allowed_groups=event.acl.allowed_groups,
+                )
+
+            self._send_sync_status(
+                event.sync_id,
+                event.document_id,
+                SyncStatusEnum.COMPLETED,
+            )
 
     async def start_consuming(self) -> None:
         self._stop_event.clear()
@@ -153,8 +161,6 @@ class IngestionKafkaWorker:
                 val = msg.value()
                 if val is None:
                     continue
-
-                raw_json = val.decode("utf-8")
 
                 try:
                     await self.process_message_payload(msg.value())

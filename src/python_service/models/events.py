@@ -1,7 +1,8 @@
-import uuid
 import time
-from typing import Annotated, Literal, Optional
+import uuid
 from enum import Enum
+from typing import Annotated, Literal
+
 from pydantic import BaseModel, Field, TypeAdapter
 
 
@@ -57,5 +58,5 @@ class KafkaSyncStatusEvent(BaseModel):
     sync_id: str
     document_id: str
     status: SyncStatusEnum
-    error_message: Optional[str] = None
+    error_message: str | None = None
     timestamp: int = Field(default_factory=lambda: int(time.time()))
