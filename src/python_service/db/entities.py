@@ -9,6 +9,7 @@ from sqlalchemy import (
     Integer,
     String,
     Table,
+    Text,
     Uuid,
 )
 from sqlalchemy.orm import (
@@ -42,6 +43,18 @@ vector_chunk_association = Table(
     ),
     Column("position", Integer, nullable=False, default=0),
 )
+
+
+class Documents(Base):
+    """Source metadata required to produce trustworthy citations."""
+
+    __tablename__ = "documents"
+
+    document_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_system: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_updated: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Chunks(Base):

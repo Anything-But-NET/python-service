@@ -16,6 +16,7 @@ from python_service.config import get_settings
 from python_service.db.entities import (
     Base,
     Chunks,
+    Documents,
     VectorNode,
     vector_chunk_association,
 )
@@ -172,13 +173,65 @@ class RagDbService:
 
         return all_chunk_ids
 
+    async def _upsert_document_metadata(
+        self,
+        session: AsyncSession,
+        document_id: str,
+        title: str | None = None,
+        url: str | None = None,
+        source_system: str | None = None,
+        last_updated: str | None = None,
+    ) -> None:
+        document = await session.get(Documents, document_id)
+        if document is None:
+            document = Documents(document_id=document_id)
+            session.add(document)
+
+        # Update only metadata actually supplied by the producer. Missing metadata
+        # must not erase previously persisted values or be replaced with guesses.
+        if title is not None:
+            document.title = title.strip() or None
+        if url is not None:
+            document.url = url.strip() or None
+        if source_system is not None:
+            document.source_system = source_system.strip() or None
+        if last_updated is not None:
+            document.last_updated = last_updated.strip() or None
+
+        await session.flush()
+
+    async def _get_documents_by_ids(
+        self,
+        document_ids: list[str],
+    ) -> dict[str, Documents]:
+        if not document_ids:
+            return {}
+
+        async with self.session_factory() as session:
+            result = await session.scalars(
+                select(Documents).where(Documents.document_id.in_(document_ids))
+            )
+            return {document.document_id: document for document in result.all()}
+
     async def save_document_tree(
         self,
         node: VectorizedSegmentNode,
         document_id: str,
+        title: str | None = None,
+        url: str | None = None,
+        source_system: str | None = None,
+        last_updated: str | None = None,
     ) -> list[uuid.UUID]:
         async with self.session_factory() as session:
             try:
+                await self._upsert_document_metadata(
+                    session=session,
+                    document_id=document_id,
+                    title=title,
+                    url=url,
+                    source_system=source_system,
+                    last_updated=last_updated,
+                )
                 await self._clear_document_data(session, document_id)
 
                 chunk_ids = await self._save_node_recursive(
@@ -341,30 +394,62 @@ class RagDbService:
             threshold=threshold,
         )
 
+        # Fetch all source records in one query. A merged vector node can contain
+        # chunks from more than one document, so never infer provenance from the
+        # first chunk alone.
+        all_document_ids = list(dict.fromkeys(
+            chunk.document_id
+            for point, _ in merged_points
+            for chunk in point.chunks
+        ))
+        documents_by_id = await self._get_documents_by_ids(all_document_ids)
+
         results: list[dict] = []
         for point, score in merged_points:
-            chunk_ids = [str(c.id) for c in point.chunks]
-            chunk_texts = [c.text for c in point.chunks]
+            chunk_texts = [chunk.text for chunk in point.chunks]
+            chunk_ids_by_document: dict[str, list[str]] = {}
+            for chunk in point.chunks:
+                ids = chunk_ids_by_document.setdefault(chunk.document_id, [])
+                chunk_id = str(chunk.id)
+                if chunk_id not in ids:
+                    ids.append(chunk_id)
 
-            document_ids = list(dict.fromkeys(c.document_id for c in point.chunks))
+            citations = []
+            for document_id, chunk_ids in chunk_ids_by_document.items():
+                document = documents_by_id.get(document_id)
+                citations.append({
+                    "title": document.title if document is not None else None,
+                    "url": document.url if document is not None else None,
+                    "doc_id": document_id,
+                    "chunk_ids": chunk_ids,
+                })
 
+            document_ids = list(chunk_ids_by_document)
             results.append({
                 "point_id": str(point.id),
                 "parent_id": str(point.parent_id) if point.parent_id else None,
                 "score": score,
                 "children_count": point.children_count,
-                "chunk_ids": chunk_ids,
+                "chunk_ids": [str(chunk.id) for chunk in point.chunks],
                 "chunks": chunk_texts,
+                # Keep the legacy single-document field for existing internal
+                # callers; document_ids/citations preserve multi-document provenance.
                 "document_id": document_ids[0] if document_ids else None,
+                "document_ids": document_ids,
+                "citations": citations,
                 "text": "\n".join(chunk_texts),
             })
 
         return results
 
+
     async def delete_document(self, document_id: str) -> None:
         async with self.session_factory() as session:
             try:
                 await self._clear_document_data(session, document_id)
+                document = await session.get(Documents, document_id)
+                if document is not None:
+                    await session.delete(document)
                 await session.commit()
             except Exception:
                 await session.rollback()

@@ -9,9 +9,9 @@ from python_service.models.events import (
     DocumentDeleteEvent,
     DocumentUpdateAclEvent,
     DocumentUpsertEvent,
-    event_adapter,
     KafkaSyncStatusEvent,
     SyncStatusEnum,
+    event_adapter,
 )
 
 
@@ -128,3 +128,16 @@ def test_kafka_sync_status_event_validation():
     assert event.status == SyncStatusEnum.FAILED_PARSE
     assert event.error_message == "Unsupported format"
     assert event.timestamp > 0
+
+
+def test_upsert_event_tracks_only_explicit_source_metadata():
+    event = DocumentUpsertEvent(
+        document_id="doc-no-metadata",
+        action="create",
+        raw_content="# Content",
+    )
+
+    assert "title" not in event.model_fields_set
+    assert "url" not in event.model_fields_set
+    assert "source_system" not in event.model_fields_set
+    assert "last_updated" not in event.model_fields_set

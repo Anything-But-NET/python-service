@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 import pytest
 
-from python_service.db.entities import Chunks, VectorNode
+from python_service.db.entities import Chunks, Documents, VectorNode
 from python_service.db.service import (
     RagDbService,
     _normalize_db_url,
@@ -41,6 +41,8 @@ def mock_db_service():
 
     mock_session = AsyncMock()
     mock_session.add = MagicMock()
+    mock_session.get = AsyncMock(return_value=None)
+    service._get_documents_by_ids = AsyncMock(return_value={})
     # async with service.session_factory() as session
     service.session_factory = MagicMock()
     service.session_factory.return_value.__aenter__.return_value = mock_session
@@ -246,7 +248,7 @@ async def test_auto_merge_points_and_query_with_auto_merge(mock_db_service):
     )
     # Both children should be auto-merged into parent_node
     assert len(merged) == 1
-    winner_node, score = merged[0]
+    winner_node, _score = merged[0]
     assert winner_node.id == parent_id
 
     # Test query_with_auto_merge
@@ -257,3 +259,183 @@ async def test_auto_merge_points_and_query_with_auto_merge(mock_db_service):
         assert res["point_id"] == str(parent_id)
         assert res["document_id"] == "doc-1"
         assert "Child 1 text\nChild 2 text" in res["text"]
+
+
+@pytest.mark.asyncio
+async def test_upsert_document_metadata_only_updates_supplied_values(mock_db_service):
+    service, _, mock_session = mock_db_service
+
+    await service._upsert_document_metadata(
+        session=mock_session,
+        document_id="doc-metadata",
+        title="  Architecture Guide  ",
+        url="https://example.test/architecture",
+        source_system="sharepoint",
+        last_updated="2026-11-01T12:00:00Z",
+    )
+
+    stored = next(
+        call.args[0]
+        for call in mock_session.add.call_args_list
+        if isinstance(call.args[0], Documents)
+    )
+    assert stored.document_id == "doc-metadata"
+    assert stored.title == "Architecture Guide"
+    assert stored.url == "https://example.test/architecture"
+    assert stored.source_system == "sharepoint"
+    assert stored.last_updated == "2026-11-01T12:00:00Z"
+    mock_session.flush.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_upsert_document_metadata_preserves_existing_values_when_missing(mock_db_service):
+    service, _, mock_session = mock_db_service
+    existing = Documents(
+        document_id="doc-existing",
+        title="Existing title",
+        url="https://example.test/existing",
+        source_system="sharepoint",
+    )
+    mock_session.get.return_value = existing
+
+    await service._upsert_document_metadata(
+        session=mock_session,
+        document_id="doc-existing",
+    )
+
+    assert existing.title == "Existing title"
+    assert existing.url == "https://example.test/existing"
+    assert existing.source_system == "sharepoint"
+    mock_session.add.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_query_with_auto_merge_returns_deduplicated_source_citations(mock_db_service):
+    service, _, _ = mock_db_service
+
+    doc_a_chunk_1 = Chunks(
+        id=uuid.uuid4(),
+        text="Evidence from document A, section 1",
+        document_id="doc-a",
+    )
+    doc_b_chunk = Chunks(
+        id=uuid.uuid4(),
+        text="Evidence from document B",
+        document_id="doc-b",
+    )
+    doc_a_chunk_2 = Chunks(
+        id=uuid.uuid4(),
+        text="Evidence from document A, section 2",
+        document_id="doc-a",
+    )
+    point = VectorNode(
+        id=uuid.uuid4(),
+        parent_id=None,
+        children_count=0,
+        embedding=[0.0] * 1024,
+        chunks=[doc_a_chunk_1, doc_b_chunk, doc_a_chunk_2],
+    )
+    document_a = Documents(
+        document_id="doc-a",
+        title="Document A",
+        url="https://example.test/a",
+    )
+    document_b = Documents(
+        document_id="doc-b",
+        title="Document B",
+        url="https://example.test/b",
+    )
+    service.search_points = AsyncMock(return_value=[(point, 0.91)])
+    service.auto_merge_points = AsyncMock(return_value=[(point, 0.91)])
+    service._get_documents_by_ids = AsyncMock(
+        return_value={"doc-a": document_a, "doc-b": document_b}
+    )
+
+    results = await service.query_with_auto_merge(
+        vector=np.zeros(1024),
+        limit=10,
+        threshold=0.5,
+    )
+
+    assert len(results) == 1
+    result = results[0]
+    assert result["document_id"] == "doc-a"
+    assert result["document_ids"] == ["doc-a", "doc-b"]
+    assert result["citations"] == [
+        {
+            "title": "Document A",
+            "url": "https://example.test/a",
+            "doc_id": "doc-a",
+            "chunk_ids": [str(doc_a_chunk_1.id), str(doc_a_chunk_2.id)],
+        },
+        {
+            "title": "Document B",
+            "url": "https://example.test/b",
+            "doc_id": "doc-b",
+            "chunk_ids": [str(doc_b_chunk.id)],
+        },
+    ]
+
+
+@pytest.mark.asyncio
+async def test_query_with_auto_merge_does_not_fabricate_missing_metadata(mock_db_service):
+    service, _, _ = mock_db_service
+    chunk = Chunks(id=uuid.uuid4(), text="Evidence", document_id="doc-without-metadata")
+    point = VectorNode(
+        id=uuid.uuid4(),
+        parent_id=None,
+        children_count=0,
+        embedding=[0.0] * 1024,
+        chunks=[chunk],
+    )
+    service.search_points = AsyncMock(return_value=[(point, 0.9)])
+    service.auto_merge_points = AsyncMock(return_value=[(point, 0.9)])
+    service._get_documents_by_ids = AsyncMock(return_value={})
+
+    results = await service.query_with_auto_merge(np.zeros(1024))
+
+    assert results[0]["citations"] == [
+        {
+            "title": None,
+            "url": None,
+            "doc_id": "doc-without-metadata",
+            "chunk_ids": [str(chunk.id)],
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_delete_document_removes_source_metadata(mock_db_service):
+    service, _, mock_session = mock_db_service
+    document = Documents(
+        document_id="doc-delete",
+        title="Document to delete",
+        url="https://example.test/delete",
+    )
+    mock_session.get.return_value = document
+
+    await service.delete_document("doc-delete")
+
+    mock_session.delete.assert_awaited_once_with(document)
+    mock_session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_upsert_document_metadata_clears_explicitly_empty_values(mock_db_service):
+    service, _, mock_session = mock_db_service
+    existing = Documents(
+        document_id="doc-cleared",
+        title="Old title",
+        url="https://example.test/old",
+    )
+    mock_session.get.return_value = existing
+
+    await service._upsert_document_metadata(
+        session=mock_session,
+        document_id="doc-cleared",
+        title="",
+        url="   ",
+    )
+
+    assert existing.title is None
+    assert existing.url is None

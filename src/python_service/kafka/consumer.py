@@ -68,8 +68,12 @@ class IngestionKafkaWorker:
             )
             self.producer.poll(0)
             logger.debug(f"[{sync_id}] Sent sync status {status.value} for {document_id}")
-        except Exception as e:
-            logger.error(f"[{sync_id}] Failed to send sync status: {e}")
+        except (KafkaException, BufferError) as exc:
+            logger.error(
+                "[%s] Failed to send sync status: %s",
+                sync_id,
+                exc,
+            )
 
     @asynccontextmanager
     async def _sync_status_guard(self, sync_id: str, document_id: str, failure_status: SyncStatusEnum):
@@ -80,39 +84,54 @@ class IngestionKafkaWorker:
             self._send_sync_status(sync_id, document_id, failure_status, str(e))
             raise
 
-async def _handle_event(self, event: KafkaNewFileDataEvent) -> None:
-    if isinstance(event, DocumentUpsertEvent):
-        logger.info(f"[{event.sync_id}] UPSERT for document_id: {event.document_id}")
+    async def _handle_event(self, event: KafkaNewFileDataEvent) -> None:
+        if isinstance(event, DocumentUpsertEvent):
+            logger.info(f"[{event.sync_id}] UPSERT for document_id: {event.document_id}")
 
-        self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.IN_PROGRESS)
+            self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.IN_PROGRESS)
 
-        # PHASE 1: Parse and Vectorize (CPU-heavy)
-        async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_PARSE):
-            ast = await asyncio.to_thread(self.parser.parse, event.raw_content)
-            vec_ast = await asyncio.to_thread(self.vectorizer.vectorize_tree, ast)
+            # PHASE 1: Parse and Vectorize (CPU-heavy)
+            async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_PARSE):
+                ast = await asyncio.to_thread(self.parser.parse, event.raw_content)
+                vec_ast = await asyncio.to_thread(self.vectorizer.vectorize_tree, ast)
 
-        # PHASE 2: Storage (DB heavy)
-        async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_STORAGE):
-            await self.db.save_document_tree(node=vec_ast, document_id=event.document_id)
+            # PHASE 2: Storage (DB heavy)
+            async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_STORAGE):
+                await self.db.save_document_tree(
+                    node=vec_ast,
+                    document_id=event.document_id,
+                    title=event.title if "title" in event.model_fields_set else None,
+                    url=event.url if "url" in event.model_fields_set else None,
+                    source_system=(
+                        event.source_system
+                        if "source_system" in event.model_fields_set
+                        else None
+                    ),
+                    last_updated=(
+                        event.last_updated
+                        if "last_updated" in event.model_fields_set
+                        else None
+                    ),
+                )
 
-        # SUCCESS
-        self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
-        logger.info(f"[{event.sync_id}] Successfully saved: {event.document_id}")
+            # SUCCESS
+            self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
+            logger.info(f"[{event.sync_id}] Successfully saved: {event.document_id}")
 
-    elif isinstance(event, DocumentDeleteEvent):
-        logger.info(f"[{event.sync_id}] DELETE for document_id: {event.document_id}")
+        elif isinstance(event, DocumentDeleteEvent):
+            logger.info(f"[{event.sync_id}] DELETE for document_id: {event.document_id}")
 
-        self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.IN_PROGRESS)
+            self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.IN_PROGRESS)
 
-        async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_STORAGE):
-            await self.db.delete_document(event.document_id)
+            async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_STORAGE):
+                await self.db.delete_document(event.document_id)
 
-        self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
-        logger.info(f"[{event.sync_id}] Successfully deleted: {event.document_id}")
+            self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
+            logger.info(f"[{event.sync_id}] Successfully deleted: {event.document_id}")
 
-    elif isinstance(event, DocumentUpdateAclEvent):
-        logger.info(f"[{event.sync_id}] Ignoring UPDATE_ACL for {event.document_id}")
-        self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
+        elif isinstance(event, DocumentUpdateAclEvent):
+            logger.info(f"[{event.sync_id}] Ignoring UPDATE_ACL for {event.document_id}")
+            self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
 
     async def start_consuming(self) -> None:
         self._stop_event.clear()
@@ -138,39 +157,23 @@ async def _handle_event(self, event: KafkaNewFileDataEvent) -> None:
                 raw_json = val.decode("utf-8")
 
                 try:
-                    payload_dict = json.loads(raw_json)
-                    event = event_adapter.validate_python(payload_dict)
-
-                    await self._handle_event(event)
-
-                except Exception as e:
-                    headers = msg.headers() or []
-                    headers.extend([
-                        ('error_reason', str(e).encode('utf-8')),
-                        ('original_topic', msg.topic().encode('utf-8')),
-                        ('original_partition', str(msg.partition()).encode('utf-8')),
-                        ('original_offset', str(msg.offset()).encode('utf-8'))
-                    ])
-
-                    self.producer.produce(
-                        topic=self.topic + ".DLT",
-                        key=msg.key(),
-                        value=msg.value(),
-                        headers=headers
-                    )
+                    await self.process_message_payload(msg.value())
                     self.producer.poll(0)
-                    logger.error(f"Failed processing message: {e}", exc_info=True)
+                except Exception:
+                    logger.exception("Failed processing message")
                 finally:
-                    await asyncio.to_thread(self.consumer.commit, asynchronous=True)
-
-            except KafkaException as e:
-                logger.error(f"Kafka exception in poll loop: {e}", exc_info=True)
+                    await asyncio.to_thread(
+                        self.consumer.commit,
+                        asynchronous=True,
+                    )
+            except KafkaException:
+                logger.exception("Kafka exception in poll loop")
                 await asyncio.sleep(5)
             except asyncio.CancelledError:
                 logger.info("Kafka consumer task cancelled...")
                 break
-            except Exception as e:
-                logger.error(f"Unexpected error in consumer loop: {e}", exc_info=True)
+            except Exception:
+                logger.exception("Unexpected error in consumer loop")
                 await asyncio.sleep(5)
 
         await asyncio.to_thread(self.consumer.close)
