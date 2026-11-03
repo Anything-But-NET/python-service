@@ -28,7 +28,8 @@ def test_out_of_domain_spam_question_rejected_without_ticket():
 def test_missing_knowledge_question_escalates_and_creates_ticket():
     """AC 2: Unanswerable work questions trigger escalation and ticket creation."""
     user = UserContext(user_id="usr_dev_1", groups=["developer"])
-    response = answer_question("How to connect to corporate VPN?", user)
+    
+    response = answer_question("VPN configuration guidelines", user)
 
     assert response.status == "MISSING_KNOWLEDGE"
     assert response.answer == "I couldn't find information about this in the knowledge base. I have created a support ticket for you."
