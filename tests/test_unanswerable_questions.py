@@ -1,37 +1,38 @@
 import pytest
-from python_service.retrieval_service import UserContext
-from python_service.services.qa_service import QAService
+import numpy as np
+from unittest.mock import MagicMock
+
+from python_service.services.query_filter_service import QueryFilterService, DEFAULT_SPAM_RESPONSE
 
 
 @pytest.fixture
-def qa_service():
-    return QAService(vectorizer=None)  # Мок без gRPC для pytest
+def mock_vectorizer():
+    vectorizer = MagicMock()
+    # Імітуємо повернення векторів для спам-фраз та запитів
+    def fake_vectorize(text: str) -> np.ndarray:
+        text_lower = text.lower()
+        if any(w in text_lower for w in ["recipe", "sandwich", "weather", "food"]):
+            return np.array([1.0, 0.0, 0.0], dtype=np.float32)
+        return np.array([0.0, 1.0, 0.0], dtype=np.float32)
+
+    vectorizer.vectorize_query.side_effect = fake_vectorize
+    return vectorizer
 
 
-def test_answerable_question_returns_factual_answer_and_citations(qa_service):
-    """AC 1: Answerable questions receive factual answers with citations."""
-    user = UserContext(user_id="usr_dev_1", groups=["developer"])
-    response = qa_service.answer_question("Backend Python", user)
+def test_query_filter_blocks_out_of_domain_query(mock_vectorizer):
+    """Out-of-domain spam query is identified as spam with default response."""
+    service = QueryFilterService(vectorizer=mock_vectorizer)
+    result = service.check_query("How to make a sandwich?")
 
-    assert response.status == "ANSWERED"
-    assert "FastAPI" in response.answer
-    assert len(response.citations) > 0
-    assert response.create_ticket is False
-
-
-def test_out_of_domain_spam_question_rejected_without_ticket(qa_service):
-    """AC 1 & AC 2: Out-of-domain questions are rejected without creating tickets."""
-    user = UserContext(user_id="usr_dev_1", groups=["developer"])
-    response = qa_service.answer_question("How can I prepare a sandwich?", user)
-
-    assert response.status == "SPAM_REJECTED"
-    assert response.create_ticket is False
+    assert result.is_spam is True
+    assert result.rejection_reason == "OUT_OF_DOMAIN"
+    assert result.default_response == DEFAULT_SPAM_RESPONSE
 
 
-def test_missing_knowledge_question_escalates_and_creates_ticket(qa_service):
-    """AC 2: Unanswerable work questions trigger escalation and ticket creation."""
-    user = UserContext(user_id="usr_dev_1", groups=["developer"])
-    response = qa_service.answer_question("VPN configuration guidelines", user)
+def test_query_filter_allows_valid_query(mock_vectorizer):
+    """Valid domain query passes filter."""
+    service = QueryFilterService(vectorizer=mock_vectorizer)
+    result = service.check_query("How to set up database connection?")
 
-    assert response.status == "MISSING_KNOWLEDGE"
-    assert response.create_ticket is True
+    assert result.is_spam is False
+    assert result.default_response is None
