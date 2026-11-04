@@ -18,7 +18,6 @@ router = APIRouter()
 
 
 def _to_search_result(result: dict) -> SearchResultItem:
-    # One citation per supporting chunk, scored by the retrieved node.
     citations = [
         RagCitation(
             document_id=result["document_id"],
