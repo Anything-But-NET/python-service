@@ -1,7 +1,9 @@
-import uuid
 import time
-from typing import Annotated, Literal, Optional
+import uuid
+from datetime import datetime
 from enum import Enum
+from typing import Annotated, Literal
+
 from pydantic import BaseModel, Field, TypeAdapter
 
 
@@ -10,17 +12,23 @@ class AclPayload(BaseModel):
 
 
 class DocumentUpsertEvent(BaseModel):
-    sync_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    """Upsert event; all fields are required by contracts/openapi.yaml.
+
+    No defaults on purpose: a missing field must fail validation (-> DLT)
+    instead of being silently replaced with made-up values.
+    """
+
+    sync_id: str
     document_id: str
     action: Literal["create", "update"]
 
-    source_system: str = "unknown"
-    title: str = "Untitled"
-    url: str = ""
-    raw_content: str = ""
-    last_updated: str = ""
+    source_system: str
+    title: str
+    url: str
+    raw_content: str
+    last_updated: datetime
 
-    acl: AclPayload = Field(default_factory=AclPayload)
+    acl: AclPayload
 
 
 class DocumentDeleteEvent(BaseModel):
@@ -57,5 +65,5 @@ class KafkaSyncStatusEvent(BaseModel):
     sync_id: str
     document_id: str
     status: SyncStatusEnum
-    error_message: Optional[str] = None
+    error_message: str | None = None
     timestamp: int = Field(default_factory=lambda: int(time.time()))

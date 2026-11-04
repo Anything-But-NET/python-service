@@ -4,11 +4,29 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from python_service.api.dependencies import get_db_service, get_vectorizer_service
-from python_service.api.schemas import HealthResponse, SearchRequest, SearchResponse
+from python_service.api.schemas import (
+    HealthResponse,
+    RagCitation,
+    SearchRequest,
+    SearchResponse,
+    SearchResultItem,
+)
 from python_service.db.service import RagDbService
 from python_service.services.transform_service import VectorizationService
 
 router = APIRouter()
+
+
+def _to_search_result(result: dict) -> SearchResultItem:
+    citations = [
+        RagCitation(
+            document_id=result["document_id"],
+            chunk_id=chunk_id,
+            score=result["score"],
+        )
+        for chunk_id in result["chunk_ids"]
+    ]
+    return SearchResultItem(**result, citations=citations)
 
 
 @router.get("/health", response_model=HealthResponse, tags=["system"])
@@ -25,7 +43,8 @@ async def search_documents(
     query_vec = await asyncio.to_thread(vectorizer.vectorize_query, payload.query)
     results = await db.query_with_auto_merge(
         vector=query_vec,
+        allowed_groups=payload.user_permissions.allowed_groups,
         limit=payload.limit,
         threshold=payload.threshold,
     )
-    return SearchResponse(results=results)
+    return SearchResponse(results=[_to_search_result(r) for r in results])

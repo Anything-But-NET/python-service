@@ -1,6 +1,8 @@
+import logging
 import uuid
 from collections import defaultdict, deque
 from collections.abc import Iterable
+from datetime import UTC, datetime
 
 import numpy as np
 from sqlalchemy import delete, select, text
@@ -16,6 +18,7 @@ from python_service.config import get_settings
 from python_service.db.entities import (
     Base,
     Chunks,
+    RagDocument,
     VectorNode,
     vector_chunk_association,
 )
@@ -23,6 +26,27 @@ from python_service.models.domain import VectorizedSegmentNode
 
 SHARP_CHILD_SCORE_DIFF = 0.06
 DEFAULT_SCORE_DECAY = 0.001
+
+logger = logging.getLogger(__name__)
+
+
+def _normalize_groups(groups: Iterable[str]) -> list[str]:
+    """Strip, drop blanks and de-duplicate while preserving order."""
+    return list(dict.fromkeys(
+        group.strip()
+        for group in groups
+        if group and group.strip()
+    ))
+
+
+def _to_aware_datetime(value: datetime | str | None) -> datetime | None:
+    """Parse ISO strings and treat naive datetimes as UTC."""
+    if isinstance(value, str):
+        value = value.strip()
+        value = datetime.fromisoformat(value) if value else None
+    if value is not None and value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value
 
 
 def _to_uuid(val: uuid.UUID | str) -> uuid.UUID:
@@ -55,24 +79,66 @@ class RagDbService:
             expire_on_commit=False,
         )
 
+    async def update_document_acl(
+        self,
+        document_id: str,
+        allowed_groups: list[str],
+    ) -> bool:
+        """Replace the ACL of an existing document.
+
+        An empty ACL is stored as-is (default deny: nobody can retrieve it).
+        Returns False when the document is unknown; its next upsert carries
+        the full ACL anyway, so this is not treated as a storage failure.
+        """
+        groups = _normalize_groups(allowed_groups)
+
+        async with self.session_factory() as session:
+            try:
+                document = await session.get(
+                    RagDocument,
+                    document_id,
+                    with_for_update=True,
+                )
+
+                if document is None:
+                    logger.warning(
+                        "UPDATE_ACL skipped: document %s is not indexed yet",
+                        document_id,
+                    )
+                    return False
+
+                document.allowed_groups = groups
+                document.last_sync_at = datetime.now(UTC)
+
+                await session.commit()
+                return True
+
+            except Exception:
+                await session.rollback()
+                raise
+
     async def init_schema(self) -> None:
         async with self.engine.begin() as conn:
             if self.engine.dialect.name == "postgresql":
                 await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                await conn.execute(text("CREATE SCHEMA IF NOT EXISTS rag"))
+
             await conn.run_sync(Base.metadata.create_all)
 
     async def close(self) -> None:
         await self.engine.dispose()
 
-    async def _clear_document_data(self, session: AsyncSession, document_id: str) -> None:
-        chunk_ids_subq = select(Chunks.id).where(Chunks.document_id == document_id).scalar_subquery()
-
-        node_ids_subq = select(vector_chunk_association.c.vector_node_id).where(
-            vector_chunk_association.c.chunk_id.in_(chunk_ids_subq)
-        ).scalar_subquery()
-
-        await session.execute(delete(VectorNode).where(VectorNode.id.in_(node_ids_subq)))
-        await session.execute(delete(Chunks).where(Chunks.document_id == document_id))
+    async def _clear_document_data(
+        self,
+        session: AsyncSession,
+        document_id: str,
+    ) -> None:
+        await session.execute(
+            delete(VectorNode).where(VectorNode.document_id == document_id)
+        )
+        await session.execute(
+            delete(Chunks).where(Chunks.document_id == document_id)
+        )
 
     async def _save_leaf_chunks(
         self,
@@ -90,6 +156,7 @@ class RagDbService:
                 parent_id=parent_id,
                 children_count=0,
                 embedding=_to_vector_list(chunk_vec),
+                document_id=document_id,
             )
             session.add(chunk)
             session.add(leaf_node)
@@ -135,6 +202,7 @@ class RagDbService:
             parent_id=parent_id,
             children_count=direct_children_count,
             embedding=_to_vector_list(node.embedding),
+            document_id=document_id,
         )
         session.add(parent_node)
         await session.flush()
@@ -172,13 +240,79 @@ class RagDbService:
 
         return all_chunk_ids
 
+    async def _upsert_rag_document(
+        self,
+        session: AsyncSession,
+        document_id: str,
+        allowed_groups: list[str],
+        last_updated: datetime | str | None = None,
+    ) -> bool:
+        """Insert or update the document row.
+
+        Returns False (and changes nothing) when the incoming event is older
+        than what is already stored, so out-of-order events cannot overwrite
+        newer content or ACL. An empty ACL is stored as default deny.
+        """
+        groups = _normalize_groups(allowed_groups)
+        last_updated = _to_aware_datetime(last_updated)
+
+        document = await session.get(
+            RagDocument,
+            document_id,
+            with_for_update=True,
+        )
+
+        if (
+            document is not None
+            and document.last_updated is not None
+            and last_updated is not None
+            and last_updated < _to_aware_datetime(document.last_updated)
+        ):
+            logger.warning(
+                "Skipping stale upsert for %s (event last_updated=%s, stored=%s)",
+                document_id,
+                last_updated.isoformat(),
+                document.last_updated.isoformat(),
+            )
+            return False
+
+        if document is None:
+            document = RagDocument(
+                document_id=document_id,
+                allowed_groups=groups,
+                last_updated=last_updated,
+                last_sync_at=datetime.now(UTC),
+            )
+            session.add(document)
+        else:
+            document.allowed_groups = groups
+            if last_updated is not None:
+                document.last_updated = last_updated
+            document.last_sync_at = datetime.now(UTC)
+
+        await session.flush()
+        return True
+
     async def save_document_tree(
         self,
         node: VectorizedSegmentNode,
         document_id: str,
-    ) -> list[uuid.UUID]:
+        allowed_groups: list[str],
+        last_updated: datetime | str | None = None,
+    ) -> list[uuid.UUID] | None:
+        """Persist the document tree. Returns None if the event was stale."""
         async with self.session_factory() as session:
             try:
+                applied = await self._upsert_rag_document(
+                    session=session,
+                    document_id=document_id,
+                    allowed_groups=allowed_groups,
+                    last_updated=last_updated,
+                )
+                if not applied:
+                    await session.rollback()
+                    return None
+
                 await self._clear_document_data(session, document_id)
 
                 chunk_ids = await self._save_node_recursive(
@@ -187,19 +321,38 @@ class RagDbService:
                     document_id=document_id,
                     parent_id=None,
                 )
+
                 await session.commit()
                 return chunk_ids
+
             except Exception:
                 await session.rollback()
                 raise
 
-    async def get_point(self, point_id: uuid.UUID | str) -> VectorNode | None:
+    async def get_point(
+        self,
+        point_id: uuid.UUID | str,
+        allowed_groups: list[str],
+    ) -> VectorNode | None:
+        groups = _normalize_groups(allowed_groups)
+
+        if not groups:
+            return None
+
         pid = _to_uuid(point_id)
+
         async with self.session_factory() as session:
             stmt = (
                 select(VectorNode)
+                .join(
+                    RagDocument,
+                    RagDocument.document_id == VectorNode.document_id,
+                )
                 .options(selectinload(VectorNode.chunks))
-                .where(VectorNode.id == pid)
+                .where(
+                    VectorNode.id == pid,
+                    RagDocument.allowed_groups.overlap(groups),
+                )
             )
             result = await session.scalars(stmt)
             return result.first()
@@ -207,31 +360,57 @@ class RagDbService:
     async def search_points(
         self,
         vector: np.ndarray | list[float],
+        allowed_groups: list[str],
         limit: int = 20,
         only_leaves: bool = True,
     ) -> list[tuple[VectorNode, float]]:
+        groups = _normalize_groups(allowed_groups)
+
+        if not groups:
+            raise ValueError("Cannot search without user permission groups")
+
         vec_list = _to_vector_list(vector)
         distance_expr = VectorNode.embedding.cosine_distance(vec_list)
         score_expr = (1.0 - distance_expr).label("score")
 
         stmt = (
             select(VectorNode, score_expr)
+            .join(
+                RagDocument,
+                RagDocument.document_id == VectorNode.document_id,
+            )
+            .where(RagDocument.allowed_groups.overlap(groups))
             .options(selectinload(VectorNode.chunks))
             .order_by(distance_expr)
             .limit(limit)
         )
+
         if only_leaves:
             stmt = stmt.where(VectorNode.children_count == 0)
 
         async with self.session_factory() as session:
+            if self.engine.dialect.name == "postgresql":
+                # The ACL filter is applied after the HNSW scan. Without an
+                # iterative scan a restrictive ACL can leave fewer than `limit`
+                # (or zero) rows even when accessible matches exist.
+                # Requires pgvector >= 0.8. SET LOCAL is scoped to this transaction.
+                await session.execute(
+                    text("SET LOCAL hnsw.iterative_scan = relaxed_order")
+                )
             result = await session.execute(stmt)
             rows = result.all()
-            return [(row[0], float(row[1])) for row in rows]
+            # relaxed_order may return rows slightly out of order; re-sort.
+            return sorted(
+                ((row[0], float(row[1])) for row in rows),
+                key=lambda item: item[1],
+                reverse=True,
+            )
 
     async def auto_merge_points(
         self,
         points: Iterable[tuple[VectorNode, float] | VectorNode],
         query_vector: np.ndarray | list[float],
+        allowed_groups: list[str],
         threshold: float = 0.5,
     ) -> list[tuple[VectorNode, float]]:
         q_vec = _to_vector_list(query_vector)
@@ -273,7 +452,10 @@ class RagDbService:
             if not children_ids:
                 continue
 
-            parent_point = nodes_cache.get(parent_id) or await self.get_point(parent_id)
+            parent_point = nodes_cache.get(parent_id) or await self.get_point(
+                parent_id,
+                allowed_groups,
+            )
             if parent_point is None:
                 continue
             nodes_cache[parent_id] = parent_point
@@ -331,31 +513,37 @@ class RagDbService:
     async def query_with_auto_merge(
         self,
         vector: np.ndarray | list[float],
+        allowed_groups: list[str],
         limit: int = 20,
         threshold: float = 0.5,
     ) -> list[dict]:
-        initial_points = await self.search_points(vector, limit=limit, only_leaves=True)
+        initial_points = await self.search_points(
+            vector,
+            allowed_groups=allowed_groups,
+            limit=limit,
+            only_leaves=True,
+        )
         merged_points = await self.auto_merge_points(
             initial_points,
             query_vector=vector,
+            allowed_groups=allowed_groups,
             threshold=threshold,
         )
 
         results: list[dict] = []
         for point, score in merged_points:
-            chunk_ids = [str(c.id) for c in point.chunks]
-            chunk_texts = [c.text for c in point.chunks]
-
-            document_ids = list(dict.fromkeys(c.document_id for c in point.chunks))
+            # Every vector node belongs to exactly one document (FK on
+            # vector_nodes.document_id), so provenance is unambiguous.
+            chunk_texts = [chunk.text for chunk in point.chunks]
 
             results.append({
                 "point_id": str(point.id),
                 "parent_id": str(point.parent_id) if point.parent_id else None,
                 "score": score,
                 "children_count": point.children_count,
-                "chunk_ids": chunk_ids,
+                "chunk_ids": [str(chunk.id) for chunk in point.chunks],
                 "chunks": chunk_texts,
-                "document_id": document_ids[0] if document_ids else None,
+                "document_id": point.document_id,
                 "text": "\n".join(chunk_texts),
             })
 
@@ -365,6 +553,9 @@ class RagDbService:
         async with self.session_factory() as session:
             try:
                 await self._clear_document_data(session, document_id)
+                document = await session.get(RagDocument, document_id)
+                if document is not None:
+                    await session.delete(document)
                 await session.commit()
             except Exception:
                 await session.rollback()
