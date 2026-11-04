@@ -88,8 +88,6 @@ class IngestionKafkaWorker:
         if isinstance(event, DocumentUpsertEvent):
             logger.info(f"[{event.sync_id}] UPSERT for document_id: {event.document_id}")
 
-            self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.IN_PROGRESS)
-
             # PHASE 1: Parse and Vectorize (CPU-heavy)
             async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_PARSE):
                 ast = await asyncio.to_thread(self.parser.parse, event.raw_content)
