@@ -8,7 +8,6 @@ from python_service.services.query_filter_service import QueryFilterService, DEF
 @pytest.fixture
 def mock_vectorizer():
     vectorizer = MagicMock()
-    # Імітуємо повернення векторів для спам-фраз та запитів
     def fake_vectorize(text: str) -> np.ndarray:
         text_lower = text.lower()
         if any(w in text_lower for w in ["recipe", "sandwich", "weather", "food"]):
