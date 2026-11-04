@@ -28,6 +28,17 @@ class SearchRequest(BaseModel):
     threshold: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
+class RagCitation(BaseModel):
+    """Chunk reference as defined by ``RagCitation`` in contracts/openapi.yaml.
+
+    Carries no display metadata: Core resolves title/url by document_id.
+    """
+
+    document_id: str
+    chunk_id: str
+    score: float
+
+
 class SearchResultItem(BaseModel):
     point_id: str
     parent_id: str | None = None
@@ -35,7 +46,8 @@ class SearchResultItem(BaseModel):
     children_count: int
     chunk_ids: list[str]
     chunks: list[str]
-    document_id: str | None = None
+    document_id: str
+    citations: list[RagCitation]
     text: str
 
 

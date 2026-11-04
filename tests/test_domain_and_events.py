@@ -45,8 +45,11 @@ def test_event_adapter_upsert_validation():
         "sync_id": str(uuid.uuid4()),
         "document_id": "doc-123",
         "action": "create",
+        "source_system": "sharepoint",
         "title": "Test Title",
+        "url": "https://example.test/doc-123",
         "raw_content": "# Hello",
+        "last_updated": "2026-10-26T16:00:00Z",
         "acl": {"allowed_groups": ["group-1"]},
     }
     event = event_adapter.validate_python(payload)
@@ -130,14 +133,16 @@ def test_kafka_sync_status_event_validation():
     assert event.timestamp > 0
 
 
-def test_upsert_event_tracks_only_explicit_source_metadata():
-    event = DocumentUpsertEvent(
-        document_id="doc-no-metadata",
-        action="create",
-        raw_content="# Content",
-    )
+def test_upsert_event_requires_contract_fields():
+    # Missing title/url/source_system/last_updated/acl must fail validation
+    # (-> DLT) instead of being replaced with made-up defaults.
+    with pytest.raises(ValidationError) as exc_info:
+        DocumentUpsertEvent(
+            sync_id=str(uuid.uuid4()),
+            document_id="doc-no-metadata",
+            action="create",
+            raw_content="# Content",
+        )
 
-    assert "title" not in event.model_fields_set
-    assert "url" not in event.model_fields_set
-    assert "source_system" not in event.model_fields_set
-    assert "last_updated" not in event.model_fields_set
+    missing = {err["loc"][0] for err in exc_info.value.errors()}
+    assert {"source_system", "title", "url", "last_updated", "acl"} <= missing

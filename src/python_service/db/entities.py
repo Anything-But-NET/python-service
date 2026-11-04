@@ -64,6 +64,14 @@ class RagDocument(Base):
         server_default=func.now(),
     )
 
+    __table_args__ = (
+        Index(
+            "idx_document_metadata_allowed_groups",
+            "allowed_groups",
+            postgresql_using="gin",
+        ),
+    )
+
 
 class Chunks(Base):
     __tablename__ = "chunks"

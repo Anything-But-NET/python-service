@@ -14,6 +14,7 @@ from python_service.models.events import (
     DocumentUpsertEvent,
     KafkaNewFileDataEvent,
     SyncStatusEnum,
+    event_adapter,
 )
 from python_service.services.parse_service import MarkdownParserService
 from python_service.services.transform_service import VectorizationService
@@ -96,16 +97,19 @@ class IngestionKafkaWorker:
 
             # PHASE 2: Storage (DB heavy)
             async with self._sync_status_guard(event.sync_id, event.document_id, SyncStatusEnum.FAILED_STORAGE):
-                await self.db.save_document_tree(
+                saved = await self.db.save_document_tree(
                     node=vec_ast,
                     document_id=event.document_id,
                     allowed_groups=event.acl.allowed_groups,
                     last_updated=event.last_updated,
                 )
 
-            # SUCCESS
+            # SUCCESS (a stale event is a no-op, not a failure)
             self._send_sync_status(event.sync_id, event.document_id, SyncStatusEnum.COMPLETED)
-            logger.info(f"[{event.sync_id}] Successfully saved: {event.document_id}")
+            if saved is None:
+                logger.info(f"[{event.sync_id}] Stale upsert ignored: {event.document_id}")
+            else:
+                logger.info(f"[{event.sync_id}] Successfully saved: {event.document_id}")
 
         elif isinstance(event, DocumentDeleteEvent):
             logger.info(f"[{event.sync_id}] DELETE for document_id: {event.document_id}")
@@ -130,9 +134,16 @@ class IngestionKafkaWorker:
                 event.document_id,
                 SyncStatusEnum.FAILED_STORAGE,
             ):
-                await self.db.update_document_acl(
+                updated = await self.db.update_document_acl(
                     document_id=event.document_id,
                     allowed_groups=event.acl.allowed_groups,
+                )
+
+            if not updated:
+                logger.info(
+                    "[%s] UPDATE_ACL ignored, document not indexed: %s",
+                    event.sync_id,
+                    event.document_id,
                 )
 
             self._send_sync_status(
@@ -140,6 +151,35 @@ class IngestionKafkaWorker:
                 event.document_id,
                 SyncStatusEnum.COMPLETED,
             )
+
+    async def process_message_payload(self, raw_value: bytes) -> None:
+        """Decode, validate and handle a single ingestion message.
+
+        Raises on malformed JSON, contract violations or processing errors;
+        the poll loop routes such messages to the DLT.
+        """
+        payload = json.loads(raw_value.decode("utf-8"))
+        event = event_adapter.validate_python(payload)
+        await self._handle_event(event)
+
+    def _send_to_dlt(self, msg, error: Exception) -> None:
+        headers = list(msg.headers() or [])
+        headers.extend([
+            ("error_reason", str(error).encode("utf-8")),
+            ("original_topic", msg.topic().encode("utf-8")),
+            ("original_partition", str(msg.partition()).encode("utf-8")),
+            ("original_offset", str(msg.offset()).encode("utf-8")),
+        ])
+        try:
+            self.producer.produce(
+                topic=self.topic + "-dlt",
+                key=msg.key(),
+                value=msg.value(),
+                headers=headers,
+            )
+            self.producer.poll(0)
+        except (KafkaException, BufferError):
+            logger.exception("Failed to publish message to DLT")
 
     async def start_consuming(self) -> None:
         self._stop_event.clear()
@@ -163,10 +203,11 @@ class IngestionKafkaWorker:
                     continue
 
                 try:
-                    await self.process_message_payload(msg.value())
+                    await self.process_message_payload(val)
                     self.producer.poll(0)
-                except Exception:
+                except Exception as exc:
                     logger.exception("Failed processing message")
+                    self._send_to_dlt(msg, exc)
                 finally:
                     await asyncio.to_thread(
                         self.consumer.commit,

@@ -347,7 +347,7 @@ async def test_upsert_rag_document_preserves_last_updated_when_missing(
 
 
 @pytest.mark.asyncio
-async def test_query_with_auto_merge_returns_source_citations(mock_db_service):
+async def test_query_with_auto_merge_returns_document_per_point(mock_db_service):
     service, _, _ = mock_db_service
 
     chunk_a1 = Chunks(
@@ -395,54 +395,11 @@ async def test_query_with_auto_merge_returns_source_citations(mock_db_service):
         threshold=0.5,
     )
 
-    assert len(results) == 2
-
-    results_by_document = {
-        result["document_id"]: result
-        for result in results
-    }
-
-    assert results_by_document["doc-a"]["citations"] == [
-        {
-            "doc_id": "doc-a",
-            "chunk_ids": [str(chunk_a1.id), str(chunk_a2.id)],
-        }
-    ]
-
-    assert results_by_document["doc-b"]["citations"] == [
-        {
-            "doc_id": "doc-b",
-            "chunk_ids": [str(chunk_b.id)],
-        }
-    ]
-
-
-@pytest.mark.asyncio
-async def test_query_with_auto_merge_does_not_fabricate_missing_metadata(mock_db_service):
-    service, _, _ = mock_db_service
-    chunk = Chunks(id=uuid.uuid4(), text="Evidence", document_id="doc-without-metadata")
-    point = VectorNode(
-        id=uuid.uuid4(),
-        parent_id=None,
-        children_count=0,
-        embedding=[0.0] * 1024,
-        document_id="doc-without-metadata",
-        chunks=[chunk],
-    )
-    service.search_points = AsyncMock(return_value=[(point, 0.9)])
-    service.auto_merge_points = AsyncMock(return_value=[(point, 0.9)])
-
-    results = await service.query_with_auto_merge(
-        np.zeros(1024),
-        allowed_groups=["developer"],
-    )
-
-    assert results[0]["citations"] == [
-        {
-            "doc_id": "doc-without-metadata",
-            "chunk_ids": [str(chunk.id)],
-        }
-    ]
+    assert [r["document_id"] for r in results] == ["doc-a", "doc-b"]
+    assert results[0]["chunk_ids"] == [str(chunk_a1.id), str(chunk_a2.id)]
+    assert results[1]["chunk_ids"] == [str(chunk_b.id)]
+    # The DB layer returns retrieval data only; citations are built by the API.
+    assert "citations" not in results[0]
 
 
 @pytest.mark.asyncio
@@ -461,16 +418,108 @@ async def test_delete_document_removes_rag_document(mock_db_service):
     mock_session.delete.assert_awaited_once_with(document)
     mock_session.commit.assert_awaited_once()
 
+
 @pytest.mark.asyncio
-async def test_upsert_rag_document_rejects_empty_acl(mock_db_service):
+async def test_upsert_rag_document_stores_empty_acl_as_default_deny(mock_db_service):
     service, _, mock_session = mock_db_service
 
-    with pytest.raises(ValueError, match="at least one allowed group"):
-        await service._upsert_rag_document(
-            session=mock_session,
-            document_id="doc-empty-acl",
-            allowed_groups=[],
-        )
+    applied = await service._upsert_rag_document(
+        session=mock_session,
+        document_id="doc-empty-acl",
+        allowed_groups=["", "  "],
+    )
 
-    mock_session.add.assert_not_called()
+    assert applied is True
+    stored = mock_session.add.call_args.args[0]
+    assert stored.allowed_groups == []
+
+
+@pytest.mark.asyncio
+async def test_upsert_rag_document_skips_stale_event(mock_db_service):
+    service, _, mock_session = mock_db_service
+
+    stored_date = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
+    existing = RagDocument(
+        document_id="doc-stale",
+        allowed_groups=["developer"],
+        last_updated=stored_date,
+        last_sync_at=stored_date,
+    )
+    mock_session.get.return_value = existing
+
+    applied = await service._upsert_rag_document(
+        session=mock_session,
+        document_id="doc-stale",
+        allowed_groups=["finance"],
+        last_updated="2026-11-01T12:00:00Z",
+    )
+
+    assert applied is False
+    assert existing.allowed_groups == ["developer"]
+    assert existing.last_updated == stored_date
     mock_session.flush.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_save_document_tree_returns_none_for_stale_event(mock_db_service):
+    service, _, mock_session = mock_db_service
+    service._upsert_rag_document = AsyncMock(return_value=False)
+    service._save_node_recursive = AsyncMock()
+
+    root = VectorizedSegmentNode(name="Root", level=0, embedding=None, content=[])
+    result = await service.save_document_tree(
+        root,
+        document_id="doc-stale",
+        allowed_groups=["developer"],
+        last_updated="2026-11-01T12:00:00Z",
+    )
+
+    assert result is None
+    service._save_node_recursive.assert_not_awaited()
+    mock_session.commit.assert_not_awaited()
+    mock_session.execute.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_document_acl_replaces_groups(mock_db_service):
+    service, _, mock_session = mock_db_service
+    existing = RagDocument(
+        document_id="doc-acl",
+        allowed_groups=["developer"],
+        last_sync_at=datetime(2026, 11, 1, tzinfo=UTC),
+    )
+    mock_session.get.return_value = existing
+
+    updated = await service.update_document_acl("doc-acl", [" finance ", "finance"])
+
+    assert updated is True
+    assert existing.allowed_groups == ["finance"]
+    mock_session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_update_document_acl_skips_unknown_document(mock_db_service):
+    service, _, mock_session = mock_db_service
+    mock_session.get.return_value = None
+
+    updated = await service.update_document_acl("doc-missing", ["finance"])
+
+    assert updated is False
+    mock_session.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_search_points_enables_iterative_scan_and_sorts(mock_db_service):
+    service, _, mock_session = mock_db_service
+
+    low = VectorNode(id=uuid.uuid4(), children_count=0, embedding=[0.0] * 1024)
+    high = VectorNode(id=uuid.uuid4(), children_count=0, embedding=[0.0] * 1024)
+    execute_mock = MagicMock()
+    execute_mock.all.return_value = [(low, 0.70), (high, 0.72)]
+    mock_session.execute.return_value = execute_mock
+
+    results = await service.search_points(np.zeros(1024), allowed_groups=["developer"])
+
+    first_statement = str(mock_session.execute.await_args_list[0].args[0])
+    assert "hnsw.iterative_scan" in first_statement
+    assert [node for node, _ in results] == [high, low]
