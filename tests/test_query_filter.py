@@ -2,7 +2,11 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock
 
-from python_service.services.query_filter_service import QueryFilterService, DEFAULT_SPAM_RESPONSE
+from python_service.services.query_filter_service import (
+    QueryFilterService, 
+    DEFAULT_SPAM_RESPONSE, 
+    RejectionReason
+)
 
 
 @pytest.fixture
@@ -24,7 +28,7 @@ def test_query_filter_blocks_out_of_domain_query(mock_vectorizer):
     result = service.check_query("How to make a sandwich?")
 
     assert result.is_spam is True
-    assert result.rejection_reason == "OUT_OF_DOMAIN"
+    assert result.rejection_reason == RejectionReason.OUT_OF_DOMAIN
     assert result.default_response == DEFAULT_SPAM_RESPONSE
 
 
