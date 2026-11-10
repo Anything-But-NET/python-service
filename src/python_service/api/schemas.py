@@ -1,3 +1,5 @@
+from enum import Enum
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -53,3 +55,32 @@ class SearchResultItem(BaseModel):
 
 class SearchResponse(BaseModel):
     results: list[SearchResultItem]
+
+
+class RagGenerationStatus(str, Enum):
+    ANSWER_GENERATED = "ANSWER_GENERATED"
+    EMPTY_RETRIEVAL = "EMPTY_RETRIEVAL"
+    LOW_CONFIDENCE = "LOW_CONFIDENCE"
+    ERROR = "ERROR"
+
+
+class RagGenerationRequest(BaseModel):
+    query_id: str = Field(..., min_length=1)
+    query: str = Field(..., min_length=1)
+    user_permissions: UserPermissions
+
+    @field_validator("query", "query_id")
+    @classmethod
+    def validate_non_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Field cannot be blank")
+        return value
+
+
+class RagGenerationResponse(BaseModel):
+    query_id: str
+    status: RagGenerationStatus
+    answer: str | None = None
+    confidence_score: float = Field(ge=0.0, le=1.0)
+    citations: list[RagCitation]
