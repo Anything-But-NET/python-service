@@ -4,7 +4,9 @@ from unittest.mock import AsyncMock, MagicMock
 import numpy as np
 import pytest
 
+from python_service.api.errors import GenerationServiceError
 from python_service.api.schemas import (
+    GenerationErrorStatus,
     RagGenerationRequest,
     RagGenerationStatus,
     UserPermissions,
@@ -21,7 +23,7 @@ def settings():
         _env_file=None,
         rag_retrieval_limit=8,
         rag_auto_merge_threshold=0.5,
-        rag_min_relevance_score=0.45,
+        rag_min_relevance_score=0.6,
         rag_min_confidence=0.6,
         rag_max_context_chars=24000,
     )
@@ -190,15 +192,39 @@ async def test_malformed_llm_json_returns_low_confidence(service, rag_request, r
 
 
 @pytest.mark.asyncio
-async def test_llm_failure_returns_error_status(service, rag_request, retrieved_result):
+async def test_llm_failure_raises_contract_service_error(service, rag_request, retrieved_result):
     service.db.query_with_auto_merge.return_value = [retrieved_result]
     service.llm.generate_json.side_effect = RuntimeError("provider unavailable")
 
-    response = await service.generate(rag_request)
+    with pytest.raises(GenerationServiceError) as error:
+        await service.generate(rag_request)
 
-    assert response.status == RagGenerationStatus.ERROR
-    assert response.answer is None
-    assert response.citations == []
+    assert error.value.status == GenerationErrorStatus.LLM_PROVIDER_ERROR
+    assert error.value.http_status == 503
+    assert error.value.query_id == "query-123"
+
+
+@pytest.mark.asyncio
+async def test_vectorizer_failure_raises_503(service, rag_request):
+    service.vectorizer.vectorize_query.side_effect = RuntimeError("gRPC unavailable")
+
+    with pytest.raises(GenerationServiceError) as error:
+        await service.generate(rag_request)
+
+    assert error.value.status == GenerationErrorStatus.VECTOR_DB_UNAVAILABLE
+    assert error.value.http_status == 503
+    service.db.query_with_auto_merge.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_database_failure_raises_503(service, rag_request):
+    service.db.query_with_auto_merge.side_effect = RuntimeError("database unavailable")
+
+    with pytest.raises(GenerationServiceError) as error:
+        await service.generate(rag_request)
+
+    assert error.value.status == GenerationErrorStatus.VECTOR_DB_UNAVAILABLE
+    assert error.value.http_status == 503
 
 
 @pytest.mark.asyncio
@@ -257,3 +283,47 @@ def test_prompt_payload_preserves_injected_delimiters_as_plain_json_data():
     json_payload = messages[1]["content"].split("\n", 1)[1]
     parsed_payload = json.loads(json_payload)
     assert parsed_payload["retrieved_passages"][0]["text"] == malicious_text
+
+
+
+def test_prepare_passages_deduplicates_and_never_sends_truncated_tail(service):
+    service.settings.rag_max_context_chars = 1000
+    results = [
+        {
+            "document_id": "doc-1",
+            "score": 0.9,
+            "chunk_ids": ["chunk-1", "chunk-1", "chunk-2"],
+            "chunks": ["a" * 700, "duplicate text", "b" * 400],
+        },
+        {
+            "document_id": "doc-2",
+            "score": 0.9,
+            "chunk_ids": ["chunk-3", "chunk-4"],
+            "chunks": ["c" * 200, "d" * 100],
+        },
+    ]
+
+    passages = service._prepare_passages(results)
+
+    assert [passage["chunk_id"] for passage in passages] == ["chunk-1", "chunk-3", "chunk-4"]
+    assert [len(passage["text"]) for passage in passages] == [700, 200, 100]
+    assert sum(len(passage["text"]) for passage in passages) <= 1000
+
+
+def test_prepare_passages_skips_none_and_non_numeric_scores(service, retrieved_result):
+    none_score = {**retrieved_result, "score": None}
+    text_score = {**retrieved_result, "score": "not-a-number"}
+    service.settings.rag_min_relevance_score = 0.6
+
+    assert service._prepare_passages([none_score, text_score]) == []
+
+
+def test_parse_generation_accepts_json_markdown_fence():
+    raw = """```json
+{"answer":"ok","confidence_score":0.9,"insufficient_evidence":false,"cited_chunk_ids":["chunk-1"]}
+```"""
+
+    parsed = GroundedAnswerService._parse_generation(raw)
+
+    assert parsed["answer"] == "ok"
+    assert parsed["cited_chunk_ids"] == ["chunk-1"]

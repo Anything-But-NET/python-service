@@ -9,6 +9,7 @@ from python_service.api.dependencies import (
     get_vectorizer_service,
 )
 from python_service.api.schemas import (
+    GenerationError,
     HealthResponse,
     RagCitation,
     RagGenerationRequest,
@@ -60,6 +61,12 @@ async def search_documents(
 @router.post(
     "/api/v1/rag/generate",
     response_model=RagGenerationResponse,
+    responses={
+        400: {"model": GenerationError, "description": "Malformed request payload."},
+        422: {"model": GenerationError, "description": "Request schema validation failed."},
+        500: {"model": GenerationError, "description": "Unexpected RAG pipeline failure."},
+        503: {"model": GenerationError, "description": "Vector DB, vectorizer, or LLM provider unavailable."},
+    },
     tags=["rag"],
 )
 async def generate_grounded_answer(

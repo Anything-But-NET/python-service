@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import AliasChoices, Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -96,7 +96,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("RAG_AUTO_MERGE_THRESHOLD"),
     )
     rag_min_relevance_score: float = Field(
-        default=0.45,
+        default=0.6,
         ge=0.0,
         le=1.0,
         validation_alias=AliasChoices("RAG_MIN_RELEVANCE_SCORE"),
@@ -124,6 +124,18 @@ class Settings(BaseSettings):
     )
 
 
+    @model_validator(mode="after")
+    def validate_rag_thresholds(self) -> "Settings":
+        if self.rag_min_relevance_score < self.rag_min_confidence:
+            raise ValueError(
+                "RAG_MIN_RELEVANCE_SCORE must be greater than or equal to "
+                "RAG_MIN_CONFIDENCE to avoid sending evidence that cannot pass "
+                "the final confidence gate."
+            )
+        return self
+
+
 @lru_cache
 def get_settings() -> Settings:
+
     return Settings()

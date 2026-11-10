@@ -4,10 +4,15 @@ import asyncio
 import json
 import logging
 import math
+import re
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
+import grpc
+
+from python_service.api.errors import GenerationServiceError
 from python_service.api.schemas import (
+    GenerationErrorStatus,
     RagCitation,
     RagGenerationRequest,
     RagGenerationResponse,
@@ -82,15 +87,41 @@ class GroundedAnswerService:
                 self.vectorizer.vectorize_query,
                 request.query,
             )
+        except grpc.RpcError as exc:
+            logger.exception("Vectorizer gRPC failed for query_id=%s", query_id)
+            status = (
+                GenerationErrorStatus.RETRIEVAL_TIMEOUT
+                if exc.code() == grpc.StatusCode.DEADLINE_EXCEEDED
+                else GenerationErrorStatus.VECTOR_DB_UNAVAILABLE
+            )
+            message = (
+                "Vectorizer request timed out"
+                if status == GenerationErrorStatus.RETRIEVAL_TIMEOUT
+                else "Vectorizer service is unavailable"
+            )
+            raise GenerationServiceError(status, message, query_id=query_id) from exc
+        except Exception as exc:
+            logger.exception("Query vectorization failed for query_id=%s", query_id)
+            raise GenerationServiceError(
+                GenerationErrorStatus.VECTOR_DB_UNAVAILABLE,
+                "Vectorizer service is unavailable",
+                query_id=query_id,
+            ) from exc
+
+        try:
             results = await self.db.query_with_auto_merge(
                 vector=query_vector,
                 allowed_groups=allowed_groups,
                 limit=self.settings.rag_retrieval_limit,
                 threshold=self.settings.rag_auto_merge_threshold,
             )
-        except Exception:
-            logger.exception("RAG retrieval failed for query_id=%s", query_id)
-            return self._empty_response(query_id, RagGenerationStatus.ERROR)
+        except Exception as exc:
+            logger.exception("Vector database query failed for query_id=%s", query_id)
+            raise GenerationServiceError(
+                GenerationErrorStatus.VECTOR_DB_UNAVAILABLE,
+                "Vector database is unavailable",
+                query_id=query_id,
+            ) from exc
 
         passages = self._prepare_passages(results)
         if not passages:
@@ -104,9 +135,13 @@ class GroundedAnswerService:
         messages = self._build_messages(request.query, passages)
         try:
             raw_response = await self.llm.generate_json(messages)
-        except Exception:
+        except Exception as exc:
             logger.exception("Grounded generation failed for query_id=%s", query_id)
-            return self._empty_response(query_id, RagGenerationStatus.ERROR)
+            raise GenerationServiceError(
+                GenerationErrorStatus.LLM_PROVIDER_ERROR,
+                "LLM provider is unavailable",
+                query_id=query_id,
+            ) from exc
 
         try:
             generated = self._parse_generation(raw_response)
@@ -154,7 +189,13 @@ class GroundedAnswerService:
         remaining_chars = self.settings.rag_max_context_chars
 
         for result in results:
-            score = float(result.get("score", 0.0))
+            raw_score = result.get("score")
+            if raw_score is None or isinstance(raw_score, bool):
+                continue
+            try:
+                score = float(raw_score)
+            except (TypeError, ValueError):
+                continue
             if not math.isfinite(score) or score < self.settings.rag_min_relevance_score:
                 continue
             score = max(0.0, min(1.0, score))
@@ -166,14 +207,20 @@ class GroundedAnswerService:
                 continue
 
             for chunk_id, chunk_text in zip(chunk_ids, chunks):
+                if chunk_id is None:
+                    continue
                 text = str(chunk_text).strip()
-                chunk_id = str(chunk_id)
+                chunk_id = str(chunk_id).strip()
                 if not text or not chunk_id or chunk_id in seen_chunk_ids:
                     continue
                 if remaining_chars <= 0:
                     return passages
+                # Do not send a few-character tail of a passage to the LLM.
+                # Skip a passage that does not fit and let a later smaller one fit.
+                if len(text) > remaining_chars:
+                    continue
 
-                passage_text = text[:remaining_chars]
+                passage_text = text
                 passages.append({
                     "document_id": str(document_id),
                     "chunk_id": chunk_id,
@@ -211,7 +258,15 @@ class GroundedAnswerService:
 
     @staticmethod
     def _parse_generation(raw_response: str) -> dict[str, Any]:
-        parsed = json.loads(raw_response)
+        candidate = raw_response.strip()
+        fenced = re.fullmatch(
+            r"```(?:json)?\s*(.*?)\s*```",
+            candidate,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if fenced:
+            candidate = fenced.group(1).strip()
+        parsed = json.loads(candidate)
         if not isinstance(parsed, Mapping):
             raise TypeError("Generation response must be a JSON object")
 

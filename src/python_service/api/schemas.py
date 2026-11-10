@@ -57,6 +57,22 @@ class SearchResponse(BaseModel):
     results: list[SearchResultItem]
 
 
+class GenerationErrorStatus(str, Enum):
+    VALIDATION_ERROR = "VALIDATION_ERROR"
+    RETRIEVAL_TIMEOUT = "RETRIEVAL_TIMEOUT"
+    VECTOR_DB_UNAVAILABLE = "VECTOR_DB_UNAVAILABLE"
+    LLM_PROVIDER_ERROR = "LLM_PROVIDER_ERROR"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+
+
+class GenerationError(BaseModel):
+    query_id: str | None = None
+    status: GenerationErrorStatus
+    message: str
+    description: str | None = None
+    timestamp: int
+
+
 class RagGenerationStatus(str, Enum):
     ANSWER_GENERATED = "ANSWER_GENERATED"
     EMPTY_RETRIEVAL = "EMPTY_RETRIEVAL"
@@ -66,7 +82,7 @@ class RagGenerationStatus(str, Enum):
 
 class RagGenerationRequest(BaseModel):
     query_id: str = Field(..., min_length=1)
-    query: str = Field(..., min_length=1)
+    query: str = Field(..., min_length=1, max_length=4000)
     user_permissions: UserPermissions
 
     @field_validator("query", "query_id")

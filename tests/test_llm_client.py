@@ -39,6 +39,44 @@ async def test_openai_compatible_client_sends_json_chat_completion_request():
 
 
 @pytest.mark.asyncio
+async def test_openai_compatible_client_omits_authorization_without_api_key():
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["authorization"] = request.headers.get("Authorization")
+        return httpx.Response(200, json={
+            "choices": [{"message": {"content": '{"answer":"ok"}'}}],
+        })
+
+    settings = Settings(_env_file=None, llm_base_url="https://llm.example/v1", llm_api_key="")
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+        llm = OpenAICompatibleClient(settings, client=http_client)
+        assert await llm.generate_json([{"role": "user", "content": "hello"}]) == '{"answer":"ok"}'
+
+    assert captured["authorization"] is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"choices": []},
+        {"choices": [{"message": {}}]},
+        {"choices": [{"message": {"content": "   "}}]},
+    ],
+)
+async def test_openai_compatible_client_rejects_empty_or_missing_content(payload):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    settings = Settings(_env_file=None, llm_base_url="https://llm.example/v1")
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+        llm = OpenAICompatibleClient(settings, client=http_client)
+        with pytest.raises(LLMProviderError):
+            await llm.generate_json([{"role": "user", "content": "hello"}])
+
+
+@pytest.mark.asyncio
 async def test_openai_compatible_client_raises_provider_error_for_http_failure():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(503, json={"error": "unavailable"})

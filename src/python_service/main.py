@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager, suppress
 import uvicorn
 from fastapi import FastAPI
 
+from python_service.api.exception_handlers import install_generation_exception_handlers
 from python_service.api.routes import router
 from python_service.config import get_settings
 from python_service.db.service import RagDbService
@@ -84,6 +85,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(router)
+    install_generation_exception_handlers(app)
     return app
 
 
