@@ -3,15 +3,23 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from python_service.api.dependencies import get_db_service, get_vectorizer_service
+from python_service.api.dependencies import (
+    get_db_service,
+    get_grounded_answer_service,
+    get_vectorizer_service,
+)
 from python_service.api.schemas import (
+    GenerationError,
     HealthResponse,
     RagCitation,
+    RagGenerationRequest,
+    RagGenerationResponse,
     SearchRequest,
     SearchResponse,
     SearchResultItem,
 )
 from python_service.db.service import RagDbService
+from python_service.services.grounded_answer_service import GroundedAnswerService
 from python_service.services.transform_service import VectorizationService
 
 router = APIRouter()
@@ -48,3 +56,21 @@ async def search_documents(
         threshold=payload.threshold,
     )
     return SearchResponse(results=[_to_search_result(r) for r in results])
+
+
+@router.post(
+    "/api/v1/rag/generate",
+    response_model=RagGenerationResponse,
+    responses={
+        400: {"model": GenerationError, "description": "Malformed request payload."},
+        422: {"model": GenerationError, "description": "Request schema validation failed."},
+        500: {"model": GenerationError, "description": "Unexpected RAG pipeline failure."},
+        503: {"model": GenerationError, "description": "Vector DB, vectorizer, or LLM provider unavailable."},
+    },
+    tags=["rag"],
+)
+async def generate_grounded_answer(
+    payload: RagGenerationRequest,
+    service: Annotated[GroundedAnswerService, Depends(get_grounded_answer_service)],
+) -> RagGenerationResponse:
+    return await service.generate(payload)

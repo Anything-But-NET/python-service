@@ -1,6 +1,7 @@
 from fastapi import Request
 
 from python_service.db.service import RagDbService
+from python_service.services.grounded_answer_service import GroundedAnswerService
 from python_service.services.parse_service import MarkdownParserService
 from python_service.services.transform_service import VectorizationService
 
@@ -15,3 +16,7 @@ def get_vectorizer_service(request: Request) -> VectorizationService:
 
 def get_parser_service(request: Request) -> MarkdownParserService:
     return request.app.state.parser_service
+
+
+def get_grounded_answer_service(request: Request) -> GroundedAnswerService:
+    return request.app.state.grounded_answer_service

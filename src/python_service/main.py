@@ -6,10 +6,13 @@ from contextlib import asynccontextmanager, suppress
 import uvicorn
 from fastapi import FastAPI
 
+from python_service.api.exception_handlers import install_generation_exception_handlers
 from python_service.api.routes import router
 from python_service.config import get_settings
 from python_service.db.service import RagDbService
 from python_service.kafka.consumer import IngestionKafkaWorker
+from python_service.services.grounded_answer_service import GroundedAnswerService
+from python_service.services.llm_client import OpenAICompatibleClient
 from python_service.services.parse_service import MarkdownParserService
 from python_service.services.transform_service import VectorizationService
 
@@ -32,9 +35,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     db_service = RagDbService(db_url=settings.db_url)
     await db_service.init_schema()
 
+    llm_client = OpenAICompatibleClient(settings)
     app.state.parser_service = parser_service
     app.state.vectorizer_service = vectorizer_service
     app.state.db_service = db_service
+    app.state.grounded_answer_service = GroundedAnswerService(
+        db=db_service,
+        vectorizer=vectorizer_service,
+        llm=llm_client,
+        settings=settings,
+    )
 
     kafka_task: asyncio.Task[None] | None = None
     kafka_worker: IngestionKafkaWorker | None = None
@@ -63,6 +73,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             kafka_task.cancel()
             with suppress(asyncio.CancelledError):
                 await kafka_task
+        await llm_client.aclose()
         vectorizer_service.close()
         await db_service.close()
 
@@ -74,6 +85,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(router)
+    install_generation_exception_handlers(app)
     return app
 
 
