@@ -23,6 +23,10 @@ from python_service.db.entities import (
     vector_chunk_association,
 )
 from python_service.models.domain import VectorizedSegmentNode
+import json
+from sqlalchemy.dialects.postgresql import insert
+from python_service.db.entities import PromptVersionEntity
+from python_service.models.domain import PromptVersion
 
 SHARP_CHILD_SCORE_DIFF = 0.06
 DEFAULT_SCORE_DECAY = 0.001
@@ -64,6 +68,32 @@ def _normalize_db_url(db_url: str) -> str:
         return db_url.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
     return db_url
 
+def _scrub_metadata(metadata: dict | None) -> dict:
+    #Filters metadata for secrets
+    if not metadata:
+        return {}
+
+    forbidden_substrings = ["api_key", "secret", "api_token", "auth_token", "password", "credentials"]
+
+    for key, value in metadata.items():
+        key_lower = key.lower()
+
+        if any(sub in key_lower for sub in forbidden_substrings):
+            raise ValueError(f"Detected potential secret in metadata key: '{key}'. Secrets are strictly prohibited.")
+
+        val_str = str(value)
+        if val_str.startswith("sk-") and len(val_str) > 40:
+            raise ValueError(f"Detected potential API token in metadata value for key: '{key}'.")
+
+    return metadata
+
+def _generate_prompt_id(prompt_text: str, metadata: dict) -> uuid.UUID:
+    #Generates a deterministic UUIDv5 based on text and metadata
+    meta_str = json.dumps(metadata, sort_keys=True)
+    content = f"{prompt_text}|{meta_str}"
+
+    NAMESPACE_PROMPT = uuid.uuid5(uuid.NAMESPACE_OID, "rag-prompt-versioning")
+    return uuid.uuid5(NAMESPACE_PROMPT, content)
 
 class RagDbService:
     def __init__(self, db_url: str | AsyncEngine | None = None) -> None:
@@ -557,6 +587,40 @@ class RagDbService:
                 if document is not None:
                     await session.delete(document)
                 await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
+    async def get_or_create_prompt_version(
+            self,
+            prompt_text: str,
+            metadata: dict | None = None,
+    ) -> PromptVersion:
+        """
+        Register new prompt version or return existing ID.
+        Uses Content-Addressable Storage pattern (UUIDv5).
+        """
+        clean_meta = _scrub_metadata(metadata)
+
+        prompt_id = _generate_prompt_id(prompt_text, clean_meta)
+
+        async with self.session_factory() as session:
+            try:
+                # save (PostgreSQL INSERT ON CONFLICT DO NOTHING)
+                stmt = insert(PromptVersionEntity).values(
+                    id=prompt_id,
+                    prompt_text=prompt_text,
+                    prompt_metadata=clean_meta,
+                ).on_conflict_do_nothing(index_elements=['id'])
+
+                await session.execute(stmt)
+                await session.commit()
+
+                return PromptVersion(
+                    id=prompt_id,
+                    prompt_text=prompt_text,
+                    metadata=clean_meta,
+                )
             except Exception:
                 await session.rollback()
                 raise

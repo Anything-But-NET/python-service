@@ -18,6 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import JSONB
 
 VECTOR_SIZE = 1024
 
@@ -141,4 +142,26 @@ class VectorNode(Base):
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
         Index("vector_node_doc_id", "document_id"),
+    )
+
+class PromptVersionEntity(Base):
+    __tablename__ = "prompt_versions"
+    __table_args__ = {"schema": "core"}
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        primary_key=True
+    )
+    prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    prompt_metadata: Mapped[dict] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
     )
