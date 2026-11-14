@@ -55,20 +55,8 @@ def mock_db_service():
 async def test_init_schema_and_close(mock_db_service):
     service, mock_engine, _ = mock_db_service
 
-    mock_conn = AsyncMock()
-    mock_engine.begin.return_value.__aenter__.return_value = mock_conn
-
-    # PostgreSQL dialect
     await service.init_schema()
-    assert mock_conn.execute.await_count == 2
-    mock_conn.run_sync.assert_awaited_once()
-
-    # Non-postgres dialect
-    mock_engine.dialect.name = "sqlite"
-    mock_conn.reset_mock()
-    await service.init_schema()
-    mock_conn.execute.assert_not_awaited()
-    mock_conn.run_sync.assert_awaited_once()
+    mock_engine.begin.assert_not_called()
 
     await service.close()
     mock_engine.dispose.assert_awaited_once()

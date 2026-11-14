@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 
 import numpy as np
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, select, text, desc
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -23,6 +23,10 @@ from python_service.db.entities import (
     vector_chunk_association,
 )
 from python_service.models.domain import VectorizedSegmentNode
+import json
+from sqlalchemy.dialects.postgresql import insert
+from python_service.db.entities import PromptVersionEntity
+from python_service.models.domain import PromptVersion
 
 SHARP_CHILD_SCORE_DIFF = 0.06
 DEFAULT_SCORE_DECAY = 0.001
@@ -64,6 +68,38 @@ def _normalize_db_url(db_url: str) -> str:
         return db_url.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
     return db_url
 
+def _scrub_metadata(metadata: dict | list | None) -> dict | list:
+    if not metadata:
+        return metadata if metadata is not None else {}
+
+    forbidden_substrings = ["api_key", "secret", "api_token", "auth_token", "password", "credentials"]
+
+    if isinstance(metadata, dict):
+        for key, value in metadata.items():
+            key_lower = str(key).lower()
+            if any(sub in key_lower for sub in forbidden_substrings):
+                raise ValueError(f"Detected potential secret in metadata key: '{key}'. Secrets are strictly prohibited.")
+
+            if isinstance(value, (dict, list)):
+                _scrub_metadata(value)
+            else:
+                val_str = str(value)
+                if val_str.startswith("sk-") and len(val_str) > 40:
+                    raise ValueError(f"Detected potential API token in metadata value for key: '{key}'.")
+    elif isinstance(metadata, list):
+        for item in metadata:
+            if isinstance(item, (dict, list)):
+                _scrub_metadata(item)
+
+    return metadata
+
+def _generate_prompt_id(prompt_text: str, metadata: dict) -> uuid.UUID:
+    #Generates a deterministic UUIDv5 based on text and metadata
+    meta_str = json.dumps(metadata, sort_keys=True)
+    content = f"{prompt_text}|{meta_str}"
+
+    NAMESPACE_PROMPT = uuid.uuid5(uuid.NAMESPACE_OID, "rag-prompt-versioning")
+    return uuid.uuid5(NAMESPACE_PROMPT, content)
 
 class RagDbService:
     def __init__(self, db_url: str | AsyncEngine | None = None) -> None:
@@ -118,12 +154,8 @@ class RagDbService:
                 raise
 
     async def init_schema(self) -> None:
-        async with self.engine.begin() as conn:
-            if self.engine.dialect.name == "postgresql":
-                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-                await conn.execute(text("CREATE SCHEMA IF NOT EXISTS rag"))
-
-            await conn.run_sync(Base.metadata.create_all)
+        # Done by Alembic migrations.
+        pass
 
     async def close(self) -> None:
         await self.engine.dispose()
@@ -560,3 +592,75 @@ class RagDbService:
             except Exception:
                 await session.rollback()
                 raise
+
+    async def get_or_create_prompt_version(
+            self,
+            prompt_text: str,
+            metadata: dict | None = None,
+    ) -> PromptVersion:
+        """
+        Register new prompt version or return existing ID.
+        Uses Content-Addressable Storage pattern (UUIDv5).
+        """
+        clean_meta = _scrub_metadata(metadata)
+
+        prompt_id = _generate_prompt_id(prompt_text, clean_meta)
+
+        async with self.session_factory() as session:
+            try:
+                # save (PostgreSQL INSERT ON CONFLICT DO NOTHING)
+                stmt = insert(PromptVersionEntity).values(
+                    id=prompt_id,
+                    prompt_text=prompt_text,
+                    prompt_metadata=clean_meta,
+                ).on_conflict_do_nothing(index_elements=['id'])
+
+                await session.execute(stmt)
+                await session.commit()
+
+                return PromptVersion(
+                    id=prompt_id,
+                    prompt_text=prompt_text,
+                    metadata=clean_meta,
+                )
+            except Exception:
+                await session.rollback()
+                raise
+
+    async def get_prompt_version(
+            self,
+            prompt_id: uuid.UUID | str
+    ) -> PromptVersion | None:
+        """Fetch a specific prompt version by ID."""
+        pid = _to_uuid(prompt_id)
+
+        async with self.session_factory() as session:
+            stmt = select(PromptVersionEntity).where(PromptVersionEntity.id == pid)
+            result = await session.scalars(stmt)
+            entity = result.first()
+
+            if not entity:
+                return None
+
+            return PromptVersion(
+                id=entity.id,
+                prompt_text=entity.prompt_text,
+                metadata=entity.prompt_metadata,
+            )
+
+    async def get_latest_prompt_version(self) -> PromptVersion | None:
+        """Fetch the most recently created prompt version."""
+        async with self.session_factory() as session:
+
+            stmt = select(PromptVersionEntity).order_by(PromptVersionEntity.created_at.desc()).limit(1)
+            result = await session.scalars(stmt)
+            entity = result.first()
+
+            if not entity:
+                return None
+
+            return PromptVersion(
+                id=entity.id,
+                prompt_text=entity.prompt_text,
+                metadata=entity.prompt_metadata,
+            )
