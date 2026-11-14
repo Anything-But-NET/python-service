@@ -1,0 +1,15 @@
+## Database Migrations (Alembic)
+
+This service manages the `rag` schema within the shared PostgreSQL database. 
+We use Alembic to handle all database migrations.
+
+**To apply existing migrations (e.g., after pulling new changes):**
+\`\`\`bash
+uv run alembic upgrade head
+\`\`\`
+
+**To create a new migration (if you modified models in `entities.py`):**
+\`\`\`bash
+uv run alembic revision --autogenerate -m "description of changes"
+uv run alembic upgrade head
+\`\`\`

@@ -146,7 +146,6 @@ class VectorNode(Base):
 
 class PromptVersionEntity(Base):
     __tablename__ = "prompt_versions"
-    __table_args__ = {"schema": "core"}
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid,

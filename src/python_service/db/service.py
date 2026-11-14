@@ -148,12 +148,8 @@ class RagDbService:
                 raise
 
     async def init_schema(self) -> None:
-        async with self.engine.begin() as conn:
-            if self.engine.dialect.name == "postgresql":
-                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-                await conn.execute(text("CREATE SCHEMA IF NOT EXISTS rag"))
-
-            await conn.run_sync(Base.metadata.create_all)
+        # Done by Alembic migrations.
+        pass
 
     async def close(self) -> None:
         await self.engine.dispose()
