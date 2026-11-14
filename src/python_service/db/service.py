@@ -68,22 +68,28 @@ def _normalize_db_url(db_url: str) -> str:
         return db_url.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
     return db_url
 
-def _scrub_metadata(metadata: dict | None) -> dict:
-    #Filters metadata for secrets
+def _scrub_metadata(metadata: dict | list | None) -> dict | list:
     if not metadata:
-        return {}
+        return metadata if metadata is not None else {}
 
     forbidden_substrings = ["api_key", "secret", "api_token", "auth_token", "password", "credentials"]
 
-    for key, value in metadata.items():
-        key_lower = key.lower()
+    if isinstance(metadata, dict):
+        for key, value in metadata.items():
+            key_lower = str(key).lower()
+            if any(sub in key_lower for sub in forbidden_substrings):
+                raise ValueError(f"Detected potential secret in metadata key: '{key}'. Secrets are strictly prohibited.")
 
-        if any(sub in key_lower for sub in forbidden_substrings):
-            raise ValueError(f"Detected potential secret in metadata key: '{key}'. Secrets are strictly prohibited.")
-
-        val_str = str(value)
-        if val_str.startswith("sk-") and len(val_str) > 40:
-            raise ValueError(f"Detected potential API token in metadata value for key: '{key}'.")
+            if isinstance(value, (dict, list)):
+                _scrub_metadata(value)
+            else:
+                val_str = str(value)
+                if val_str.startswith("sk-") and len(val_str) > 40:
+                    raise ValueError(f"Detected potential API token in metadata value for key: '{key}'.")
+    elif isinstance(metadata, list):
+        for item in metadata:
+            if isinstance(item, (dict, list)):
+                _scrub_metadata(item)
 
     return metadata
 

@@ -1,6 +1,8 @@
 import uuid
 import pytest
 from python_service.db.service import _generate_prompt_id, _scrub_metadata
+from unittest.mock import AsyncMock, MagicMock
+from python_service.db.service import RagDbService
 
 def test_generate_prompt_id_is_deterministic():
     """Checks that the same text and metadata yield the same UUID."""
@@ -43,3 +45,21 @@ def test_scrub_metadata_blocks_secret_patterns():
     """Verify that token-like values are blocked even in secure keys."""
     with pytest.raises(ValueError, match="Detected potential API token in metadata value"):
         _scrub_metadata({"custom_string": "sk-123456789012345678901234567890123456789012345678"})
+
+@pytest.mark.asyncio
+async def test_get_or_create_prompt_version_executes_query():
+    service = RagDbService(db_url="postgresql+psycopg://fake:fake@localhost/db")
+
+    mock_session = AsyncMock()
+    mock_session_factory = MagicMock(return_value=mock_session)
+    mock_session.__aenter__.return_value = mock_session
+    service.session_factory = mock_session_factory
+
+    result = await service.get_or_create_prompt_version(
+        prompt_text="test prompt",
+        metadata={"key": "value"}
+    )
+
+    assert result.prompt_text == "test prompt"
+    mock_session.execute.assert_awaited_once()
+    mock_session.commit.assert_awaited_once()
