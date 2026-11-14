@@ -63,3 +63,40 @@ async def test_get_or_create_prompt_version_executes_query():
     assert result.prompt_text == "test prompt"
     mock_session.execute.assert_awaited_once()
     mock_session.commit.assert_awaited_once()
+
+@pytest.mark.asyncio
+async def test_get_prompt_version_executes_query():
+    service = RagDbService(db_url="postgresql+psycopg://fake:fake@localhost/db")
+
+    mock_session = AsyncMock()
+    mock_session_factory = MagicMock(return_value=mock_session)
+    mock_session.__aenter__.return_value = mock_session
+    service.session_factory = mock_session_factory
+
+    mock_result = MagicMock()
+    mock_result.first.return_value = None
+    mock_session.scalars.return_value = mock_result
+
+    test_id = uuid.uuid4()
+    result = await service.get_prompt_version(prompt_id=test_id)
+
+    assert result is None
+    mock_session.scalars.assert_awaited_once()
+
+@pytest.mark.asyncio
+async def test_get_latest_prompt_version_executes_query():
+    service = RagDbService(db_url="postgresql+psycopg://fake:fake@localhost/db")
+
+    mock_session = AsyncMock()
+    mock_session_factory = MagicMock(return_value=mock_session)
+    mock_session.__aenter__.return_value = mock_session
+    service.session_factory = mock_session_factory
+
+    mock_result = MagicMock()
+    mock_result.first.return_value = None
+    mock_session.scalars.return_value = mock_result
+
+    result = await service.get_latest_prompt_version()
+
+    assert result is None
+    mock_session.scalars.assert_awaited_once()

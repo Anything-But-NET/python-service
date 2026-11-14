@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 
 import numpy as np
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, select, text, desc
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -626,3 +626,41 @@ class RagDbService:
             except Exception:
                 await session.rollback()
                 raise
+
+    async def get_prompt_version(
+            self,
+            prompt_id: uuid.UUID | str
+    ) -> PromptVersion | None:
+        """Fetch a specific prompt version by ID."""
+        pid = _to_uuid(prompt_id)
+
+        async with self.session_factory() as session:
+            stmt = select(PromptVersionEntity).where(PromptVersionEntity.id == pid)
+            result = await session.scalars(stmt)
+            entity = result.first()
+
+            if not entity:
+                return None
+
+            return PromptVersion(
+                id=entity.id,
+                prompt_text=entity.prompt_text,
+                metadata=entity.prompt_metadata,
+            )
+
+    async def get_latest_prompt_version(self) -> PromptVersion | None:
+        """Fetch the most recently created prompt version."""
+        async with self.session_factory() as session:
+
+            stmt = select(PromptVersionEntity).order_by(PromptVersionEntity.created_at.desc()).limit(1)
+            result = await session.scalars(stmt)
+            entity = result.first()
+
+            if not entity:
+                return None
+
+            return PromptVersion(
+                id=entity.id,
+                prompt_text=entity.prompt_text,
+                metadata=entity.prompt_metadata,
+            )
