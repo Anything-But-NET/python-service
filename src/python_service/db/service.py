@@ -87,9 +87,13 @@ def _scrub_metadata(metadata: dict | list | None) -> dict | list:
                 if val_str.startswith("sk-") and len(val_str) > 40:
                     raise ValueError(f"Detected potential API token in metadata value for key: '{key}'.")
     elif isinstance(metadata, list):
-        for item in metadata:
+        for i, item in enumerate(metadata):
             if isinstance(item, (dict, list)):
                 _scrub_metadata(item)
+            else:
+                val_str = str(item)
+                if val_str.startswith("sk-") and len(val_str) > 40:
+                    raise ValueError(f"Detected potential API token in metadata list item at index {i}.")
 
     return metadata
 

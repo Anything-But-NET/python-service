@@ -46,6 +46,11 @@ def test_scrub_metadata_blocks_secret_patterns():
     with pytest.raises(ValueError, match="Detected potential API token in metadata value"):
         _scrub_metadata({"custom_string": "sk-123456789012345678901234567890123456789012345678"})
 
+def test_scrub_metadata_blocks_secret_in_list():
+    """Verify that token-like values are blocked even inside lists."""
+    with pytest.raises(ValueError, match="Detected potential API token in metadata list item"):
+        _scrub_metadata({"tokens": ["sk-123456789012345678901234567890123456789012345678"]})
+
 @pytest.mark.asyncio
 async def test_get_or_create_prompt_version_executes_query():
     service = RagDbService(db_url="postgresql+psycopg://fake:fake@localhost/db")
