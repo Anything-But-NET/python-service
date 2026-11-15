@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class HealthResponse(BaseModel):
@@ -100,3 +100,10 @@ class RagGenerationResponse(BaseModel):
     answer: str | None = None
     confidence_score: float = Field(ge=0.0, le=1.0)
     citations: list[RagCitation]
+
+class PromptMetadata(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    model: str
+    temperature: float | None = Field(default=None, ge=0.0, le=2.0)
+    max_tokens: int | None = Field(default=None, gt=0)

@@ -111,6 +111,7 @@ async def test_create_evaluation_run_executes_query():
     service = RagDbService(db_url="postgresql+psycopg://fake:fake@localhost/db")
 
     mock_session = AsyncMock()
+    mock_session.add = MagicMock()
     mock_session_factory = MagicMock(return_value=mock_session)
     mock_session.__aenter__.return_value = mock_session
     service.session_factory = mock_session_factory
@@ -126,5 +127,5 @@ async def test_create_evaluation_run_executes_query():
     assert result.status == "completed"
     assert result.metadata == {"query_id": "test-123"}
 
-    assert mock_session.add.call_count == 1
+    mock_session.add.assert_called_once()
     mock_session.commit.assert_awaited_once()

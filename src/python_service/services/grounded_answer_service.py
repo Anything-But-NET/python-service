@@ -6,6 +6,7 @@ import json
 import logging
 import math
 import re
+import time
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
@@ -18,6 +19,7 @@ from python_service.api.schemas import (
     RagGenerationRequest,
     RagGenerationResponse,
     RagGenerationStatus,
+    PromptMetadata,
 )
 from python_service.config import Settings
 from python_service.db.service import RagDbService
@@ -75,6 +77,43 @@ class GroundedAnswerService:
         self.vectorizer = vectorizer
         self.llm = llm
         self.settings = settings
+        # State for TTL cache
+        self._CACHE_TTL = 300.0
+        self._cached_prompt: str = SYSTEM_PROMPT
+        self._cached_metadata: dict = {"model": self.settings.llm_model}
+        self._cache_expires_at: float = 0.0
+
+    async def _get_current_prompt_config(self) -> tuple[str, dict]:
+        """Fetch prompt from DB with a 5-minute TTL cache and robust fallback."""
+        current_time = time.time()
+
+        if current_time < self._cache_expires_at:
+            return self._cached_prompt, self._cached_metadata
+
+        try:
+            latest = await self.db.get_latest_prompt_version()
+            if latest:
+                self._cached_prompt = latest.prompt_text
+                self._cached_metadata = latest.metadata
+            else:
+                # Seed default prompt if table is empty
+                default_metadata = PromptMetadata(model=self.settings.llm_model).model_dump()
+                created = await self.db.get_or_create_prompt_version(
+                    prompt_text=SYSTEM_PROMPT,
+                    metadata=default_metadata
+                )
+                self._cached_prompt = created.prompt_text
+                self._cached_metadata = created.metadata
+
+            self._cache_expires_at = current_time + self._CACHE_TTL
+
+        except Exception:
+            logger.exception("Failed to fetch prompt version from DB. Falling back to cached/default config.")
+            # Set a short backoff (30s) so we don't spam the failing DB on every request
+            self._cache_expires_at = current_time + 30.0
+
+        return self._cached_prompt, self._cached_metadata
+
 
     async def generate(
         self,
@@ -133,33 +172,19 @@ class GroundedAnswerService:
             )
             return self._empty_response(query_id, status)
 
-        messages = self._build_messages(request.query, passages)
-        prompt_version = await self.db.get_or_create_prompt_version(
-            prompt_text=SYSTEM_PROMPT,
-            metadata={"model": self.settings.llm_model}
-        )
+        # Get prompt & metadata via TTL Cache
+        active_prompt_text, active_metadata = await self._get_current_prompt_config()
+        messages = self._build_messages(active_prompt_text, request.query, passages)
 
         try:
             raw_response = await self.llm.generate_json(messages)
-            run_status = "completed"
         except Exception as exc:
             logger.exception("Grounded generation failed for query_id=%s", query_id)
-            await self.db.create_evaluation_run(
-                prompt_version_id=prompt_version.id,
-                status="failed",
-                metadata={"query_id": query_id, "error": str(exc)}
-            )
             raise GenerationServiceError(
                 GenerationErrorStatus.LLM_PROVIDER_ERROR,
                 "LLM provider is unavailable",
                 query_id=query_id,
             ) from exc
-
-        await self.db.create_evaluation_run(
-            prompt_version_id=prompt_version.id,
-            status=run_status,
-            metadata={"query_id": query_id}
-        )
 
         try:
             generated = self._parse_generation(raw_response)
@@ -251,7 +276,7 @@ class GroundedAnswerService:
         return passages
 
     @staticmethod
-    def _build_messages(query: str, passages: list[dict[str, Any]]) -> list[dict[str, str]]:
+    def _build_messages(prompt_text: str, query: str, passages: list[dict[str, Any]]) -> list[dict[str, str]]:
         # JSON encoding keeps passage text as data and prevents quotes/newlines
         # inside a document from changing the payload structure.
         evidence_payload = json.dumps(
@@ -263,7 +288,7 @@ class GroundedAnswerService:
             separators=(",", ":"),
         )
         return [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": prompt_text},
             {
                 "role": "user",
                 "content": (
