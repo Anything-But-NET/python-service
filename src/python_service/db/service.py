@@ -27,6 +27,8 @@ import json
 from sqlalchemy.dialects.postgresql import insert
 from python_service.db.entities import PromptVersionEntity
 from python_service.models.domain import PromptVersion
+from python_service.db.entities import EvaluationRunEntity
+from python_service.models.domain import EvaluationRun
 
 SHARP_CHILD_SCORE_DIFF = 0.06
 DEFAULT_SCORE_DECAY = 0.001
@@ -668,3 +670,35 @@ class RagDbService:
                 prompt_text=entity.prompt_text,
                 metadata=entity.prompt_metadata,
             )
+
+    async def create_evaluation_run(
+            self,
+            prompt_version_id: uuid.UUID | str,
+            status: str = "pending",
+            metadata: dict | None = None
+    ) -> EvaluationRun:
+        """Create a new evaluation run record."""
+        run_id = uuid.uuid4()
+        pid = _to_uuid(prompt_version_id)
+        safe_meta = metadata or {}
+
+        async with self.session_factory() as session:
+            try:
+                new_run = EvaluationRunEntity(
+                    id=run_id,
+                    prompt_version_id=pid,
+                    status=status,
+                    run_metadata=safe_meta
+                )
+                session.add(new_run)
+                await session.commit()
+
+                return EvaluationRun(
+                    id=run_id,
+                    prompt_version_id=pid,
+                    status=status,
+                    metadata=safe_meta
+                )
+            except Exception:
+                await session.rollback()
+                raise

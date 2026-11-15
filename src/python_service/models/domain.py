@@ -4,6 +4,7 @@ from typing import Self
 import numpy as np
 import uuid
 from typing import Any
+from datetime import datetime
 
 
 @dataclass
@@ -33,3 +34,10 @@ class PromptVersion:
     id: uuid.UUID
     prompt_text: str
     metadata: dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class EvaluationRun:
+    id: uuid.UUID
+    prompt_version_id: uuid.UUID
+    status: str
+    metadata: dict = field(default_factory=dict)
