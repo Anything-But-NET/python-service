@@ -164,3 +164,33 @@ class PromptVersionEntity(Base):
         nullable=False,
         server_default=func.now(),
     )
+
+class EvaluationRunEntity(Base):
+    __tablename__ = "evaluation_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    prompt_version_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("rag.prompt_versions.id", ondelete="RESTRICT"),
+        nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        server_default="pending"
+    )
+    run_metadata: Mapped[dict] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )

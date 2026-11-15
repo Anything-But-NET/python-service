@@ -1,4 +1,5 @@
 import json
+import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
@@ -14,6 +15,7 @@ from python_service.api.schemas import (
 from python_service.config import Settings
 from python_service.services.grounded_answer_service import (
     GroundedAnswerService,
+    SYSTEM_PROMPT,
 )
 
 
@@ -62,6 +64,15 @@ def retrieved_result():
 def service(settings):
     db = MagicMock()
     db.query_with_auto_merge = AsyncMock()
+
+    db.get_latest_prompt_version = AsyncMock(return_value=None)
+    db.get_or_create_prompt_version = AsyncMock()
+
+    mock_prompt = MagicMock()
+    mock_prompt.prompt_text = SYSTEM_PROMPT
+    mock_prompt.metadata = {"model": "test-model"}
+    db.get_or_create_prompt_version.return_value = mock_prompt
+
     vectorizer = MagicMock()
     vectorizer.vectorize_query.return_value = np.array([0.1, 0.2], dtype=np.float32)
     llm = MagicMock()
@@ -269,6 +280,7 @@ def test_prompt_payload_preserves_injected_delimiters_as_plain_json_data():
     )
 
     messages = GroundedAnswerService._build_messages(
+        "MOCKED SYSTEM PROMPT",
         "Summarize this document",
         [{
             "document_id": "doc-1",

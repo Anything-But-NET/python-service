@@ -105,3 +105,27 @@ async def test_get_latest_prompt_version_executes_query():
 
     assert result is None
     mock_session.scalars.assert_awaited_once()
+
+@pytest.mark.asyncio
+async def test_create_evaluation_run_executes_query():
+    service = RagDbService(db_url="postgresql+psycopg://fake:fake@localhost/db")
+
+    mock_session = AsyncMock()
+    mock_session.add = MagicMock()
+    mock_session_factory = MagicMock(return_value=mock_session)
+    mock_session.__aenter__.return_value = mock_session
+    service.session_factory = mock_session_factory
+
+    test_prompt_id = uuid.uuid4()
+    result = await service.create_evaluation_run(
+        prompt_version_id=test_prompt_id,
+        status="completed",
+        metadata={"query_id": "test-123"}
+    )
+
+    assert result.prompt_version_id == test_prompt_id
+    assert result.status == "completed"
+    assert result.metadata == {"query_id": "test-123"}
+
+    mock_session.add.assert_called_once()
+    mock_session.commit.assert_awaited_once()
