@@ -29,7 +29,7 @@ class OpenAICompatibleClient:
             timeout=httpx.Timeout(settings.llm_timeout_seconds),
         )
 
-    async def generate_json(self, messages: list[dict[str, str]]) -> str:
+    async def generate_json(self, messages: list[dict[str, str]], **kwargs: Any) -> str:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
@@ -41,6 +41,9 @@ class OpenAICompatibleClient:
             "max_tokens": self.max_tokens,
             "response_format": {"type": "json_object"},
         }
+
+        valid_kwargs = {k: v for k, v in kwargs.items() if v is not None}
+        payload.update(valid_kwargs)
 
         try:
             response = await self.client.post(
