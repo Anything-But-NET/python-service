@@ -1,4 +1,5 @@
 import json
+import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
@@ -62,6 +63,13 @@ def retrieved_result():
 def service(settings):
     db = MagicMock()
     db.query_with_auto_merge = AsyncMock()
+
+    db.get_or_create_prompt_version = AsyncMock()
+    prompt_mock = MagicMock()
+    prompt_mock.id = uuid.uuid4()
+    db.get_or_create_prompt_version.return_value = prompt_mock
+    db.create_evaluation_run = AsyncMock()
+
     vectorizer = MagicMock()
     vectorizer.vectorize_query.return_value = np.array([0.1, 0.2], dtype=np.float32)
     llm = MagicMock()

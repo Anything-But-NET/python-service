@@ -126,5 +126,5 @@ async def test_create_evaluation_run_executes_query():
     assert result.status == "completed"
     assert result.metadata == {"query_id": "test-123"}
 
-    mock_session.add.assert_called_once()
+    assert mock_session.add.call_count == 1
     mock_session.commit.assert_awaited_once()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 import asyncio
 import json
 import logging
@@ -133,15 +134,32 @@ class GroundedAnswerService:
             return self._empty_response(query_id, status)
 
         messages = self._build_messages(request.query, passages)
+        prompt_version = await self.db.get_or_create_prompt_version(
+            prompt_text=SYSTEM_PROMPT,
+            metadata={"model": self.settings.llm_model}
+        )
+
         try:
             raw_response = await self.llm.generate_json(messages)
+            run_status = "completed"
         except Exception as exc:
             logger.exception("Grounded generation failed for query_id=%s", query_id)
+            await self.db.create_evaluation_run(
+                prompt_version_id=prompt_version.id,
+                status="failed",
+                metadata={"query_id": query_id, "error": str(exc)}
+            )
             raise GenerationServiceError(
                 GenerationErrorStatus.LLM_PROVIDER_ERROR,
                 "LLM provider is unavailable",
                 query_id=query_id,
             ) from exc
+
+        await self.db.create_evaluation_run(
+            prompt_version_id=prompt_version.id,
+            status=run_status,
+            metadata={"query_id": query_id}
+        )
 
         try:
             generated = self._parse_generation(raw_response)
