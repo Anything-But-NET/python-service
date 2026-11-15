@@ -34,10 +34,8 @@ class OpenAICompatibleClient:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        target_model = kwargs.pop("model", self.model)
-
         payload: dict[str, Any] = {
-            "model": target_model,
+            "model": self.model,
             "messages": messages,
             "temperature": 0,
             "max_tokens": self.max_tokens,

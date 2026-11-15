@@ -176,8 +176,11 @@ class GroundedAnswerService:
         active_prompt_text, active_metadata = await self._get_current_prompt_config()
         messages = self._build_messages(active_prompt_text, request.query, passages)
 
+        allowed_llm_keys = {"model", "temperature", "max_tokens"}
+        llm_kwargs = {k: v for k, v in active_metadata.items() if k in allowed_llm_keys}
+
         try:
-            raw_response = await self.llm.generate_json(messages, **active_metadata)
+            raw_response = await self.llm.generate_json(messages, **llm_kwargs)
         except Exception as exc:
             logger.exception("Grounded generation failed for query_id=%s", query_id)
             raise GenerationServiceError(
