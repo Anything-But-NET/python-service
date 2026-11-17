@@ -1,0 +1,698 @@
+openapi: 3.0.3
+info:
+  title: RAG MVP Answer-Quality Evaluation API (SCRUM-66)
+  version: 1.0.0
+  description: |
+    Контракти для запуску відтворюваних перевірок якості AI-відповідей (MVP) на Golden Set
+    та валідації запропонованих порогів (thresholds).
+    
+    Синхронізовано з таблицею `rag.evaluation_runs` (Alembic revision `072ec6d296af`)
+    та схемами `python_service.api.schemas`.
+
+tags:
+  - name: rag-evaluation
+    description: Запуск перевірок якості відповідей та отримання звітів по Golden Set
+
+paths:
+  /api/v1/rag/evaluations/runs:
+    post:
+      tags:
+        - rag-evaluation
+      summary: Запустити прогін перевірок якості на Golden Set
+      description: |
+        Виконує перевірки (relevance, factual grounding, citation correctness, safe no-answer)
+        на вказаному Golden Set для заданої `prompt_version_id` і зберігає результат у `rag.evaluation_runs`.
+      operationId: runQualityEvaluation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluationRunCreateRequest'
+      responses:
+        '201':
+          description: Оцінювання виконано, результати збережено в `rag.evaluation_runs`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationRunResponse'
+        '400':
+          description: Некоректний запит або невалідний формат параметрів
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationError'
+        '404':
+          description: Вказаний `prompt_version_id` або Golden Set не знайдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationError'
+        '422':
+          description: Помилка валідації схеми запиту
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationError'
+        '500':
+          description: Внутрішня помилка під час прогону оцінювання
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationError'
+
+    get:
+      tags:
+        - rag-evaluation
+      summary: Отримати список прогонів оцінювання
+      operationId: listEvaluationRuns
+      parameters:
+        - name: prompt_version_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/EvaluationRunStatus'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Список прогонів оцінювання (скорочена інформація без per-case деталей)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationRunListResponse'
+
+  /api/v1/rag/evaluations/runs/{run_id}:
+    get:
+      tags:
+        - rag-evaluation
+      summary: Отримати повний звіт прогону оцінювання за ID
+      description: |
+        Повертає machine-readable звіт із агрегованими метриками, порівнянням із запропонованими порогами
+        та детальними per-case результатами (включно з причинами падіння). Використовується як вхід для SCRUM-34.
+      operationId: getEvaluationRun
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          description: UUID запису в таблиці `rag.evaluation_runs`
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Повний звіт прогону оцінювання
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationRunResponse'
+        '404':
+          description: Прогін оцінювання не знайдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationError'
+
+components:
+  schemas:
+    # ==========================================
+    # Базові Enum-и та перевикористані схеми
+    # ==========================================
+    EvaluationRunStatus:
+      type: string
+      description: Статус прогону в таблиці `rag.evaluation_runs.status`
+      enum:
+        - pending
+        - running
+        - completed
+        - failed
+      default: pending
+
+    ThresholdDecisionStatus:
+      type: string
+      description: |
+        Статус порогів якості. За вимогами SCRUM-66, незатверджені пороги
+        мають явно маркуватися як `PROPOSED`, а не прийматися мовчки як продуктове рішення.
+      enum:
+        - PROPOSED
+        - APPROVED
+      default: PROPOSED
+
+    ExpectedOutcomeType:
+      type: string
+      description: Очікувана поведінка згідно з розміткою Golden Set (SCRUM-71)
+      enum:
+        - ANSWER_EXPECTED
+        - INSUFFICIENT_EVIDENCE
+
+    RagGenerationStatus:
+      type: string
+      description: Статус відповіді RAG-пайплайну (`python_service.api.schemas.RagGenerationStatus`)
+      enum:
+        - ANSWER_GENERATED
+        - EMPTY_RETRIEVAL
+        - LOW_CONFIDENCE
+        - ERROR
+
+    RagCitation:
+      type: object
+      description: Посилання на чанк джерела (`python_service.api.schemas.RagCitation`)
+      required:
+        - document_id
+        - chunk_id
+        - score
+      properties:
+        document_id:
+          type: string
+          example: "doc-policy-01"
+        chunk_id:
+          type: string
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        score:
+          type: number
+          format: float
+          example: 0.87
+
+    # ==========================================
+    # Конфігурація порогів та вхідного запиту
+    # ==========================================
+    QualityThresholdsConfig:
+      type: object
+      description: Пороги для 4 вимірів якості та критерій проходження Golden Set
+      required:
+        - decision_status
+        - relevance_min_score
+        - factual_grounding_min_score
+        - citation_correctness_min_score
+        - target_pass_rate
+      properties:
+        decision_status:
+          $ref: '#/components/schemas/ThresholdDecisionStatus'
+        relevance_min_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.75
+          description: Мінімальний score релевантності для зарахування окремого кейсу
+        factual_grounding_min_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.85
+          description: Мінімальна частка підтверджених джерелами тверджень у відповіді
+        citation_correctness_min_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          default: 1.0
+          description: Мінімальний score коректності цитат у відповіді
+        target_pass_rate:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.85
+          description: Очікувана частка успішних кейсів по всьому Golden Set для кожного виміру
+
+    EvaluationDatasetConfig:
+      type: object
+      description: Метадані датасету для відтворюваності результатів (SCRUM-10)
+      required:
+        - dataset_id
+        - dataset_version
+      properties:
+        dataset_id:
+          type: string
+          example: "mvp-golden-set"
+        dataset_version:
+          type: string
+          example: "v1.0.0"
+        dataset_path:
+          type: string
+          nullable: true
+          example: "datasets/golden_set_v1.json"
+        known_limitations:
+          type: array
+          items:
+            type: string
+          description: Задокументовані обмеження поточного Golden Set
+          example:
+            - "Мала вибірка кейсів із конфліктними джерелами (лише 3 кейси)"
+            - "Відсутні багатомовні запити"
+
+    EvaluationRunCreateRequest:
+      type: object
+      required:
+        - prompt_version_id
+        - dataset
+        - thresholds
+      properties:
+        prompt_version_id:
+          type: string
+          format: uuid
+          description: ID версії промпта з таблиці `rag.prompt_versions`
+        dataset:
+          $ref: '#/components/schemas/EvaluationDatasetConfig'
+        thresholds:
+          $ref: '#/components/schemas/QualityThresholdsConfig'
+        retrieval_limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        retrieval_threshold:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.5
+
+    # ==========================================
+    # 4 виміри якості (Checks) для кожного кейсу
+    # ==========================================
+    RelevanceCheckResult:
+      type: object
+      description: Перевірка релевантності відповіді питанню користувача
+      required:
+        - applicable
+        - passed
+        - score
+        - threshold
+        - calculation_method
+      properties:
+        applicable:
+          type: boolean
+          description: False для кейсів, де очікується safe no-answer
+        passed:
+          type: boolean
+        score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        threshold:
+          type: number
+          format: float
+        calculation_method:
+          type: string
+          example: "token_overlap_and_intent_rubric_v1"
+        details:
+          type: string
+          nullable: true
+
+    FactualGroundingCheckResult:
+      type: object
+      description: Перевірка відповідності фактів у відповіді знайденим (retrieved) пасажам
+      required:
+        - applicable
+        - passed
+        - score
+        - threshold
+        - calculation_method
+        - unsupported_claims
+      properties:
+        applicable:
+          type: boolean
+        passed:
+          type: boolean
+        score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        threshold:
+          type: number
+          format: float
+        calculation_method:
+          type: string
+          example: "retrieved_passage_claim_support_ratio_v1"
+        supported_claims_count:
+          type: integer
+          minimum: 0
+        total_claims_count:
+          type: integer
+          minimum: 0
+        unsupported_claims:
+          type: array
+          items:
+            type: string
+          description: Твердження з відповіді, які не знайдено у retrieved чанках
+
+    CitationCorrectnessCheckResult:
+      type: object
+      description: |
+        Перевірка коректності цитат:
+        1) цитати існують (`citations_exist`)
+        2) ведуть на очікуване джерело (`resolves_to_expected_source`)
+        3) підтверджують зміст відповіді (`supports_answer_content`)
+      required:
+        - applicable
+        - passed
+        - score
+        - threshold
+        - citations_exist
+        - resolves_to_expected_source
+        - supports_answer_content
+        - calculation_method
+      properties:
+        applicable:
+          type: boolean
+        passed:
+          type: boolean
+        score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        threshold:
+          type: number
+          format: float
+        citations_exist:
+          type: boolean
+        resolves_to_expected_source:
+          type: boolean
+        supports_answer_content:
+          type: boolean
+        unexpected_document_ids:
+          type: array
+          items:
+            type: string
+        missing_expected_document_ids:
+          type: array
+          items:
+            type: string
+        calculation_method:
+          type: string
+          example: "citation_source_and_support_check_v1"
+
+    SafeNoAnswerCheckResult:
+      type: object
+      description: |
+        Перевірка безпечної відмови від відповіді, коли у Golden Set вказано,
+        що наявних доказів недостатньо (`INSUFFICIENT_EVIDENCE`).
+      required:
+        - applicable
+        - passed
+        - score
+        - expected_no_answer
+        - actual_no_answer
+        - actual_generation_status
+        - calculation_method
+      properties:
+        applicable:
+          type: boolean
+        passed:
+          type: boolean
+        score:
+          type: number
+          format: float
+          enum: [0.0, 1.0]
+        expected_no_answer:
+          type: boolean
+        actual_no_answer:
+          type: boolean
+          description: True, якщо статус EMPTY_RETRIEVAL / LOW_CONFIDENCE або відповідь містить явну відмову
+        actual_generation_status:
+          $ref: '#/components/schemas/RagGenerationStatus'
+        calculation_method:
+          type: string
+          example: "abstention_status_and_null_answer_check_v1"
+
+    # ==========================================
+    # Per-Case результат та Агреговані метрики
+    # ==========================================
+    CaseEvaluationResult:
+      type: object
+      description: Результат оцінювання одного тестового кейсу з Golden Set
+      required:
+        - case_id
+        - query
+        - expected_outcome
+        - actual_status
+        - passed
+        - checks
+        - failure_reasons
+      properties:
+        case_id:
+          type: string
+          example: "GS-001"
+        query:
+          type: string
+        expected_outcome:
+          $ref: '#/components/schemas/ExpectedOutcomeType'
+        expected_document_ids:
+          type: array
+          items:
+            type: string
+        actual_status:
+          $ref: '#/components/schemas/RagGenerationStatus'
+        actual_answer:
+          type: string
+          nullable: true
+        actual_confidence_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        actual_citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/RagCitation'
+        passed:
+          type: boolean
+          description: True, якщо всі застосовні для цього кейсу перевірки пройшли успішно
+        checks:
+          type: object
+          required:
+            - relevance
+            - factual_grounding
+            - citation_correctness
+            - safe_no_answer
+          properties:
+            relevance:
+              $ref: '#/components/schemas/RelevanceCheckResult'
+            factual_grounding:
+              $ref: '#/components/schemas/FactualGroundingCheckResult'
+            citation_correctness:
+              $ref: '#/components/schemas/CitationCorrectnessCheckResult'
+            safe_no_answer:
+              $ref: '#/components/schemas/SafeNoAnswerCheckResult'
+        failure_reasons:
+          type: array
+          items:
+            type: string
+          description: Чіткий опис причин, чому кейс не пройшов перевірку (для інспекції командою)
+          example:
+            - "citation_correctness: cited document 'doc-99' is not in expected sources ['doc-01']"
+
+    DimensionAggregateSummary:
+      type: object
+      description: Зведена статистика по одному виміру якості та порівняння з порогом
+      required:
+        - dimension
+        - evaluated_cases_count
+        - passed_cases_count
+        - observed_pass_rate
+        - observed_mean_score
+        - proposed_threshold_score
+        - proposed_target_pass_rate
+        - threshold_decision_status
+        - meets_proposed_threshold
+      properties:
+        dimension:
+          type: string
+          enum:
+            - relevance
+            - factual_grounding
+            - citation_correctness
+            - safe_no_answer
+        evaluated_cases_count:
+          type: integer
+        passed_cases_count:
+          type: integer
+        observed_pass_rate:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        observed_mean_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        proposed_threshold_score:
+          type: number
+          format: float
+        proposed_target_pass_rate:
+          type: number
+          format: float
+        threshold_decision_status:
+          $ref: '#/components/schemas/ThresholdDecisionStatus'
+        meets_proposed_threshold:
+          type: boolean
+          description: Чи виконується запропонований поріг на поточному Golden Set
+
+    EvaluationRunMetadataPayload:
+      type: object
+      description: |
+        Структура поля `metadata` (JSONB) у таблиці `rag.evaluation_runs`.
+        Зберігає конфігурацію, агреговані метрики, порівняння порогів та per-case результати.
+      required:
+        - dataset
+        - thresholds
+        - total_cases
+        - passed_cases
+        - failed_cases
+        - overall_pass_rate
+        - dimension_summaries
+        - case_results
+      properties:
+        dataset:
+          $ref: '#/components/schemas/EvaluationDatasetConfig'
+        thresholds:
+          $ref: '#/components/schemas/QualityThresholdsConfig'
+        total_cases:
+          type: integer
+        passed_cases:
+          type: integer
+        failed_cases:
+          type: integer
+        overall_pass_rate:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        dimension_summaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/DimensionAggregateSummary'
+        followup_jira_issues:
+          type: array
+          items:
+            type: string
+          description: Зафіксовані Jira-задачі для виявлених прогалин або падінь
+          example: ["SCRUM-155"]
+        case_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaseEvaluationResult'
+
+    # ==========================================
+    # Відповіді API (синхронізовані з EvaluationRunEntity)
+    # ==========================================
+    EvaluationRunResponse:
+      type: object
+      description: Повна модель запису з `rag.evaluation_runs` разом із розгорнутим `metadata`
+      required:
+        - id
+        - prompt_version_id
+        - status
+        - metadata
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        prompt_version_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/EvaluationRunStatus'
+        metadata:
+          $ref: '#/components/schemas/EvaluationRunMetadataPayload'
+        created_at:
+          type: string
+          format: date-time
+
+    EvaluationRunSummaryItem:
+      type: object
+      required:
+        - id
+        - prompt_version_id
+        - status
+        - created_at
+        - overall_pass_rate
+        - threshold_decision_status
+      properties:
+        id:
+          type: string
+          format: uuid
+        prompt_version_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/EvaluationRunStatus'
+        created_at:
+          type: string
+          format: date-time
+        dataset_version:
+          type: string
+        total_cases:
+          type: integer
+        passed_cases:
+          type: integer
+        overall_pass_rate:
+          type: number
+          format: float
+        threshold_decision_status:
+          $ref: '#/components/schemas/ThresholdDecisionStatus'
+
+    EvaluationRunListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluationRunSummaryItem'
+
+    # ==========================================
+    # Стандартна схема помилки з schemas.py
+    # ==========================================
+    GenerationErrorStatus:
+      type: string
+      enum:
+        - VALIDATION_ERROR
+        - RETRIEVAL_TIMEOUT
+        - VECTOR_DB_UNAVAILABLE
+        - LLM_PROVIDER_ERROR
+        - INTERNAL_ERROR
+
+    GenerationError:
+      type: object
+      description: Схема помилки згідно з `python_service.api.schemas.GenerationError`
+      required:
+        - status
+        - message
+        - timestamp
+      properties:
+        query_id:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/GenerationErrorStatus'
+        message:
+          type: string
+        description:
+          type: string
+          nullable: true
+        timestamp:
+          type: integer
+          format: int64
