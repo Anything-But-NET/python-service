@@ -13,6 +13,12 @@ from python_service.api.schemas import GenerationError, GenerationErrorStatus
 
 logger = logging.getLogger(__name__)
 _GENERATE_PATH = "/api/v1/rag/generate"
+_EVALUATIONS_PREFIX = "/api/v1/rag/evaluations/runs"
+
+
+def _is_rag_contract_path(path: str) -> bool:
+    return path == _GENERATE_PATH or path.startswith(_EVALUATIONS_PREFIX)
+
 
 
 def _query_id_from_body(body: Any) -> str | None:
@@ -27,7 +33,7 @@ def install_generation_exception_handlers(app: FastAPI) -> None:
         request: Request,
         exc: RequestValidationError,
     ) -> JSONResponse:
-        if request.url.path != _GENERATE_PATH:
+        if not _is_rag_contract_path(request.url.path):
             return await request_validation_exception_handler(request, exc)
 
         errors = exc.errors()
@@ -79,7 +85,7 @@ def install_generation_exception_handlers(app: FastAPI) -> None:
         )
 
     async def unexpected_error_handler(request: Request, exc: Exception):
-        if request.url.path != _GENERATE_PATH:
+        if not _is_rag_contract_path(request.url.path):
             logger.error(
                 "Unhandled API error",
                 exc_info=(type(exc), exc, exc.__traceback__),

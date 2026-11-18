@@ -1,6 +1,7 @@
 from fastapi import Request
 
 from python_service.db.service import RagDbService
+from python_service.services.evaluation_service import EvaluationService
 from python_service.services.grounded_answer_service import GroundedAnswerService
 from python_service.services.parse_service import MarkdownParserService
 from python_service.services.transform_service import VectorizationService
@@ -20,3 +21,8 @@ def get_parser_service(request: Request) -> MarkdownParserService:
 
 def get_grounded_answer_service(request: Request) -> GroundedAnswerService:
     return request.app.state.grounded_answer_service
+
+
+def get_evaluation_service(request: Request) -> EvaluationService:
+    return request.app.state.evaluation_service
+

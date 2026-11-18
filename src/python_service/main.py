@@ -11,6 +11,7 @@ from python_service.api.routes import router
 from python_service.config import get_settings
 from python_service.db.service import RagDbService
 from python_service.kafka.consumer import IngestionKafkaWorker
+from python_service.services.evaluation_service import EvaluationService
 from python_service.services.grounded_answer_service import GroundedAnswerService
 from python_service.services.llm_client import OpenAICompatibleClient
 from python_service.services.parse_service import MarkdownParserService
@@ -44,6 +45,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         vectorizer=vectorizer_service,
         llm=llm_client,
         settings=settings,
+    )
+    app.state.evaluation_service = EvaluationService(
+        db=db_service,
+        grounded_answer_service=app.state.grounded_answer_service,
     )
 
     kafka_task: asyncio.Task[None] | None = None
