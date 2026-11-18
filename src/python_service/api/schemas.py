@@ -137,11 +137,11 @@ class QualityDimension(str, Enum):
 
 
 class QualityThresholdsConfig(BaseModel):
-    decision_status: ThresholdDecisionStatus = ThresholdDecisionStatus.PROPOSED
-    relevance_min_score: float = Field(default=0.75, ge=0.0, le=1.0)
-    factual_grounding_min_score: float = Field(default=0.85, ge=0.0, le=1.0)
-    citation_correctness_min_score: float = Field(default=1.0, ge=0.0, le=1.0)
-    target_pass_rate: float = Field(default=0.85, ge=0.0, le=1.0)
+    decision_status: ThresholdDecisionStatus
+    relevance_min_score: float = Field(..., ge=0.0, le=1.0)
+    factual_grounding_min_score: float = Field(..., ge=0.0, le=1.0)
+    citation_correctness_min_score: float = Field(..., ge=0.0, le=1.0)
+    target_pass_rate: float = Field(..., ge=0.0, le=1.0)
 
 
 class EvaluationDatasetConfig(BaseModel):

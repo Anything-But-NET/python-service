@@ -112,6 +112,10 @@ class Settings(BaseSettings):
         ge=1000,
         validation_alias=AliasChoices("RAG_MAX_CONTEXT_CHARS"),
     )
+    datasets_dir: str = Field(
+        default="datasets",
+        validation_alias=AliasChoices("DATASETS_DIR", "RAG_DATASETS_DIR"),
+    )
 
     # FastAPI / Uvicorn settings
     api_host: str = Field(

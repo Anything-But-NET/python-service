@@ -5,7 +5,8 @@
   "known_limitations": [
     "All 40 answerable questions target a single technical document ([Eng] Backend Deployment Pipeline Architecture).",
     "No multi-document synthesis or conflicting-source test cases are included.",
-    "All questions are in English; multilingual (Ukrainian) queries are not covered in v1.0.0."
+    "All questions are in English; multilingual (Ukrainian) queries are not covered in v1.0.0.",
+    "Four cases (GS-039, GS-041, GS-044, GS-045) use placeholder tokens ([DB_PROD_CLUSTER], [REDIS_PROD_CLUSTER], [EKS_ENDPOINT], [ALB_ENDPOINT]) in SCRUM-10 spreadsheet while the source PDF contains concrete connection URLs."
   ],
   "cases": [
     {
@@ -19,6 +20,7 @@
       "expected_behavior": "Reject / Do not create ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -36,6 +38,7 @@
       "expected_behavior": "Reject / Do not create ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -53,6 +56,7 @@
       "expected_behavior": "Reject / Do not create ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -70,6 +74,7 @@
       "expected_behavior": "Reject / Do not create ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -87,6 +92,7 @@
       "expected_behavior": "Reject / Do not create ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -104,6 +110,7 @@
       "expected_behavior": "Reject / Do not create ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -121,6 +128,7 @@
       "expected_behavior": "Reject / Do not create ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -138,6 +146,7 @@
       "expected_behavior": "Reject / Do not create ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -155,6 +164,7 @@
       "expected_behavior": "Reject / Do not create ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -172,6 +182,7 @@
       "expected_behavior": "Reject / Do not create ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -189,6 +200,7 @@
       "expected_behavior": "Escalate to Human / Create Ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -206,6 +218,7 @@
       "expected_behavior": "Escalate to Human / Create Ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -223,6 +236,7 @@
       "expected_behavior": "Escalate to Human / Create Ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -240,6 +254,7 @@
       "expected_behavior": "Escalate to Human / Create Ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -257,6 +272,7 @@
       "expected_behavior": "Escalate to Human / Create Ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -274,6 +290,7 @@
       "expected_behavior": "Escalate to Human / Create Ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -291,6 +308,7 @@
       "expected_behavior": "Escalate to Human / Create Ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -308,6 +326,7 @@
       "expected_behavior": "Escalate to Human / Create Ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -325,6 +344,7 @@
       "expected_behavior": "Escalate to Human / Create Ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -342,6 +362,7 @@
       "expected_behavior": "Escalate to Human / Create Ticket",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -356,11 +377,15 @@
       "expected_answer": "Docker",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -375,11 +400,15 @@
       "expected_answer": "Amazon ECR",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -394,11 +423,15 @@
       "expected_answer": "Amazon EKS (Kubernetes)",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -413,11 +446,15 @@
       "expected_answer": "GitHub webhook on a push event to main or release branches.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 1)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -432,11 +469,15 @@
       "expected_answer": "us-east-1",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -451,11 +492,15 @@
       "expected_answer": "v1.28",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -470,11 +515,15 @@
       "expected_answer": "Amazon Aurora PostgreSQL",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -489,11 +538,15 @@
       "expected_answer": "Checkout & Environment Initialization.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 1)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -508,11 +561,15 @@
       "expected_answer": "Dynamically via AWS IAM Roles for Service Accounts (IRSA).",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 1)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -527,11 +584,15 @@
       "expected_answer": "docker buildx",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 2)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -546,11 +607,15 @@
       "expected_answer": "By separating dependency manifests from source code compilation.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 2)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -565,11 +630,15 @@
       "expected_answer": "SonarQube",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 3)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -584,11 +653,15 @@
       "expected_answer": "Trivy",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 3)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -603,11 +676,15 @@
       "expected_answer": "If a critical CVE threshold is breached.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 3)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -622,11 +699,15 @@
       "expected_answer": "Semantic Versioning along with the short Git commit SHA.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -641,11 +722,15 @@
       "expected_answer": "Using a temporary token provided via aws ecr get-login-password.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -660,11 +745,15 @@
       "expected_answer": "helm upgrade --install",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 5)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -679,11 +768,15 @@
       "expected_answer": "/healthz endpoint returning HTTP 200.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 5)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -698,11 +791,15 @@
       "expected_answer": "[DB_PROD_CLUSTER]",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -717,11 +814,15 @@
       "expected_answer": "target_session_attrs=read-only",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -736,11 +837,15 @@
       "expected_answer": "[REDIS_PROD_CLUSTER]",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -755,11 +860,15 @@
       "expected_answer": "61616",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -774,11 +883,15 @@
       "expected_answer": "104857600",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -793,11 +906,15 @@
       "expected_answer": "[EKS_ENDPOINT]",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -812,11 +929,15 @@
       "expected_answer": "[ALB_ENDPOINT]",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -831,11 +952,15 @@
       "expected_answer": "Jenkins v2.414",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -850,11 +975,15 @@
       "expected_answer": "Docker-in-Docker (dind) execution agents.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -869,11 +998,15 @@
       "expected_answer": "Dynamic Auto Scaling Group (1-10 instances).",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -888,11 +1021,15 @@
       "expected_answer": "Multi-stage alpine-based build containers.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -907,11 +1044,15 @@
       "expected_answer": "AES-256 encryption.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -926,11 +1067,15 @@
       "expected_answer": "30 days.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -945,11 +1090,15 @@
       "expected_answer": "m5.xlarge",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -964,11 +1113,15 @@
       "expected_answer": "Cilium CNI",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -983,11 +1136,15 @@
       "expected_answer": "3 Availability Zones.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -1002,11 +1159,15 @@
       "expected_answer": "AWS Load Balancer Controller with ACM TLS Termination.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -1021,11 +1182,15 @@
       "expected_answer": "Cross-zone load balancing with health checks.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -1040,11 +1205,15 @@
       "expected_answer": "Mandatory PR reviews on the main branch.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -1059,11 +1228,15 @@
       "expected_answer": "VPC Private Subnet.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -1078,11 +1251,15 @@
       "expected_answer": "ClusterIP Service.",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
@@ -1097,16 +1274,25 @@
       "expected_answer": "Dynamically per environment target (Staging vs. Production).",
       "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 5)",
       "expected_document_ids": [
-        "eng-backend-deployment-pipeline-architecture"
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
       ],
       "expected_behavior": "Return Answer and Citation",
       "user_permissions": {
         "allowed_groups": [
+          "all-employees",
           "Engineering - Backend",
           "Engineering",
           "All Staff"
         ]
       }
     }
+  ],
+  "followup_jira_issues": [
+    "SCRUM-156",
+    "SCRUM-79",
+    "SCRUM-34"
   ]
 }

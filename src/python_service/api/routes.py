@@ -90,8 +90,9 @@ async def generate_grounded_answer(
         404: {"model": GenerationError, "description": "Prompt version or Golden Set dataset not found."},
         422: {"model": GenerationError, "description": "Unprocessable Entity."},
         500: {"model": GenerationError, "description": "Internal Server Error."},
+        503: {"model": GenerationError, "description": "Service Unavailable."},
     },
-    tags=["rag-evaluation"],
+    tags=["RagEvaluation"],
 )
 async def run_quality_evaluation(
     payload: EvaluationRunCreateRequest,
@@ -105,8 +106,10 @@ async def run_quality_evaluation(
     response_model=EvaluationRunResponse,
     responses={
         404: {"model": GenerationError, "description": "Evaluation run not found."},
+        422: {"model": GenerationError, "description": "Unprocessable Entity."},
+        500: {"model": GenerationError, "description": "Internal Server Error."},
     },
-    tags=["rag-evaluation"],
+    tags=["RagEvaluation"],
 )
 async def get_evaluation_run(
     run_id: uuid.UUID,

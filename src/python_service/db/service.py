@@ -728,3 +728,34 @@ class RagDbService:
                 metadata=entity.run_metadata,
                 created_at=entity.created_at,
             )
+
+    async def update_evaluation_run(
+            self,
+            run_id: uuid.UUID | str,
+            status: str,
+            metadata: dict | None = None,
+    ) -> EvaluationRun | None:
+        """Update status and metadata of an existing evaluation run."""
+        rid = _to_uuid(run_id)
+        safe_meta = _scrub_metadata(metadata) if metadata is not None else None
+
+        async with self.session_factory() as session:
+            try:
+                entity = await session.get(EvaluationRunEntity, rid)
+                if entity is None:
+                    return None
+                entity.status = status
+                if safe_meta is not None:
+                    entity.run_metadata = safe_meta
+                await session.commit()
+                return EvaluationRun(
+                    id=entity.id,
+                    prompt_version_id=entity.prompt_version_id,
+                    status=entity.status,
+                    metadata=entity.run_metadata,
+                    created_at=entity.created_at,
+                )
+            except Exception:
+                await session.rollback()
+                raise
+
