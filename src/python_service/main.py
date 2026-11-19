@@ -37,9 +37,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await db_service.init_schema()
 
     llm_client = OpenAICompatibleClient(settings)
+    app.state.settings = settings
     app.state.parser_service = parser_service
     app.state.vectorizer_service = vectorizer_service
     app.state.db_service = db_service
+    app.state.llm_client = llm_client
     app.state.grounded_answer_service = GroundedAnswerService(
         db=db_service,
         vectorizer=vectorizer_service,
@@ -67,6 +69,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             kafka_worker.start_consuming(),
             name="kafka-ingestion-worker",
         )
+
+    app.state.kafka_worker = kafka_worker
+    app.state.kafka_task = kafka_task
 
     try:
         yield

@@ -6,8 +6,27 @@ import uuid
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
+class HealthStatus(str, Enum):
+    UP = "UP"
+    DEGRADED = "DEGRADED"
+    DOWN = "DOWN"
+
+
+class ComponentHealth(BaseModel):
+    status: HealthStatus
+    details: dict[str, Any] | None = None
+
+
+class HealthComponents(BaseModel):
+    db: ComponentHealth
+    vectorizer: ComponentHealth
+    kafka: ComponentHealth
+    llm: ComponentHealth
+
+
 class HealthResponse(BaseModel):
-    status: str = "ok"
+    status: HealthStatus
+    components: HealthComponents
 
 
 class UserPermissions(BaseModel):

@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any
 
 import httpx
@@ -6,6 +7,15 @@ import httpx
 from python_service.config import Settings
 
 logger = logging.getLogger(__name__)
+
+_PLACEHOLDER_API_KEYS = frozenset({
+    "",
+    "sk-or-v1-xxxx",
+    "sk-xxxx",
+    "your-api-key",
+    "changeme",
+    "placeholder",
+})
 
 
 class LLMProviderError(RuntimeError):
@@ -19,6 +29,7 @@ class OpenAICompatibleClient:
         self,
         settings: Settings,
         client: httpx.AsyncClient | None = None,
+        health_cache_ttl_seconds: float = 60.0,
     ) -> None:
         self.base_url = settings.llm_base_url.rstrip("/")
         self.api_key = settings.llm_api_key.get_secret_value()
@@ -28,6 +39,41 @@ class OpenAICompatibleClient:
         self.client = client or httpx.AsyncClient(
             timeout=httpx.Timeout(settings.llm_timeout_seconds),
         )
+        self._health_cache_ttl_seconds = health_cache_ttl_seconds
+        self._cached_remote_health: tuple[float, bool] | None = None
+
+    def is_configured(self) -> bool:
+        key = (self.api_key or "").strip()
+        if not key or key.lower() in _PLACEHOLDER_API_KEYS:
+            return False
+        return bool(self.base_url and self.base_url.strip() and self.model and self.model.strip())
+
+    async def check_health(self, verify_remote: bool = False, timeout: float = 1.5) -> bool:
+        if not self.is_configured():
+            return False
+        if not verify_remote:
+            return True
+
+        now = time.monotonic()
+        if (
+            self._cached_remote_health is not None
+            and (now - self._cached_remote_health[0]) < self._health_cache_ttl_seconds
+        ):
+            return self._cached_remote_health[1]
+
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        try:
+            response = await self.client.get(
+                f"{self.base_url}/models",
+                headers=headers,
+                timeout=timeout,
+            )
+            ok = response.status_code == 200
+        except httpx.HTTPError:
+            ok = False
+
+        self._cached_remote_health = (now, ok)
+        return ok
 
     async def generate_json(self, messages: list[dict[str, str]], **kwargs: Any) -> str:
         headers = {"Content-Type": "application/json"}
