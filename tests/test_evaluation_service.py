@@ -34,7 +34,10 @@ from python_service.services.evaluation_service import (
     check_relevance,
     check_safe_no_answer,
 )
-from python_service.services.grounded_answer_service import GroundedAnswerService
+from python_service.services.grounded_answer_service import (
+    GroundedAnswerService,
+    SYSTEM_PROMPT,
+)
 from python_service.services.parse_service import MarkdownParserService
 
 
@@ -408,7 +411,12 @@ async def test_prompt_override_uses_requested_prompt_version_and_single_retrieva
     llm.generate_json.assert_awaited_once()
     sent_messages = llm.generate_json.call_args.args[0]
     sent_kwargs = llm.generate_json.call_args.kwargs
-    assert sent_messages[0]["content"] == "CUSTOM_OLDER_PROMPT_TEXT_FOR_EVALUATION"
+    assert sent_messages[0]["role"] == "system"
+    assert sent_messages[0]["content"] == SYSTEM_PROMPT
+    assert sent_messages[1] == {
+        "role": "developer",
+        "content": "CUSTOM_OLDER_PROMPT_TEXT_FOR_EVALUATION",
+    }
     assert sent_kwargs == {"model": "custom-eval-model-v1", "temperature": 0.1, "max_tokens": 500}
 
 
@@ -490,7 +498,7 @@ async def test_evaluation_service_runs_on_parsed_corpus_and_60_golden_set_cases(
     db.query_with_auto_merge = AsyncMock(side_effect=_fake_query_with_auto_merge)
 
     async def _grounded_llm_from_passages(messages, **kwargs):
-        user_content = messages[1]["content"]
+        user_content = messages[-1]["content"]
         payload_json = user_content.split("\n", 1)[1]
         data = json.loads(payload_json)
         question = data["question"]
