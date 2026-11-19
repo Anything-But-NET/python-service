@@ -1,14 +1,18 @@
 import asyncio
 from typing import Annotated
+import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 
 from python_service.api.dependencies import (
     get_db_service,
+    get_evaluation_service,
     get_grounded_answer_service,
     get_vectorizer_service,
 )
 from python_service.api.schemas import (
+    EvaluationRunCreateRequest,
+    EvaluationRunResponse,
     GenerationError,
     HealthResponse,
     RagCitation,
@@ -19,6 +23,7 @@ from python_service.api.schemas import (
     SearchResultItem,
 )
 from python_service.db.service import RagDbService
+from python_service.services.evaluation_service import EvaluationService
 from python_service.services.grounded_answer_service import GroundedAnswerService
 from python_service.services.transform_service import VectorizationService
 
@@ -74,3 +79,41 @@ async def generate_grounded_answer(
     service: Annotated[GroundedAnswerService, Depends(get_grounded_answer_service)],
 ) -> RagGenerationResponse:
     return await service.generate(payload)
+
+
+@router.post(
+    "/api/v1/rag/evaluations/runs",
+    status_code=status.HTTP_201_CREATED,
+    response_model=EvaluationRunResponse,
+    responses={
+        400: {"model": GenerationError, "description": "Bad Request."},
+        404: {"model": GenerationError, "description": "Prompt version or Golden Set dataset not found."},
+        422: {"model": GenerationError, "description": "Unprocessable Entity."},
+        500: {"model": GenerationError, "description": "Internal Server Error."},
+        503: {"model": GenerationError, "description": "Service Unavailable."},
+    },
+    tags=["RagEvaluation"],
+)
+async def run_quality_evaluation(
+    payload: EvaluationRunCreateRequest,
+    service: Annotated[EvaluationService, Depends(get_evaluation_service)],
+) -> EvaluationRunResponse:
+    return await service.run_evaluation(payload)
+
+
+@router.get(
+    "/api/v1/rag/evaluations/runs/{run_id}",
+    response_model=EvaluationRunResponse,
+    responses={
+        404: {"model": GenerationError, "description": "Evaluation run not found."},
+        422: {"model": GenerationError, "description": "Unprocessable Entity."},
+        500: {"model": GenerationError, "description": "Internal Server Error."},
+    },
+    tags=["RagEvaluation"],
+)
+async def get_evaluation_run(
+    run_id: uuid.UUID,
+    service: Annotated[EvaluationService, Depends(get_evaluation_service)],
+) -> EvaluationRunResponse:
+    return await service.get_run(str(run_id))
+

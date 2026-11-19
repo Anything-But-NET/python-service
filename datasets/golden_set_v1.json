@@ -1,0 +1,1298 @@
+{
+  "dataset_id": "mvp-golden-set",
+  "dataset_version": "v1.0.0",
+  "source_jira_issue": "SCRUM-10",
+  "known_limitations": [
+    "All 40 answerable questions target a single technical document ([Eng] Backend Deployment Pipeline Architecture).",
+    "No multi-document synthesis or conflicting-source test cases are included.",
+    "All questions are in English; multilingual (Ukrainian) queries are not covered in v1.0.0.",
+    "Four cases (GS-039, GS-041, GS-044, GS-045) use placeholder tokens ([DB_PROD_CLUSTER], [REDIS_PROD_CLUSTER], [EKS_ENDPOINT], [ALB_ENDPOINT]) in SCRUM-10 spreadsheet while the source PDF contains concrete connection URLs."
+  ],
+  "cases": [
+    {
+      "case_id": "GS-001",
+      "query": "How can I prepare a sandwich?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I can only answer work-related questions based on company documentation.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Reject / Do not create ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-002",
+      "query": "How many salary gets CEO?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I can only answer work-related questions based on company documentation.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Reject / Do not create ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-003",
+      "query": "Can you write a Python script to parse PDF files?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I can only answer work-related questions based on company documentation.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Reject / Do not create ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-004",
+      "query": "Why did my Java code fail to compile on line 42?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I can only answer work-related questions based on company documentation.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Reject / Do not create ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-005",
+      "query": "What is the personal phone number of Oleg Pona?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I can only answer work-related questions based on company documentation.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Reject / Do not create ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-006",
+      "query": "Which restaurant is best for team building near the office?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I can only answer work-related questions based on company documentation.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Reject / Do not create ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-007",
+      "query": "Can you translate this 50-page document into Ukrainian?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I can only answer work-related questions based on company documentation.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Reject / Do not create ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-008",
+      "query": "Who will win the next presidential election?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I can only answer work-related questions based on company documentation.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Reject / Do not create ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-009",
+      "query": "Write a poem about our company.",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I can only answer work-related questions based on company documentation.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Reject / Do not create ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-010",
+      "query": "What is the weather like today in Lviv?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I can only answer work-related questions based on company documentation.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Reject / Do not create ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-011",
+      "query": "How to cpnnect to the corporate VPN?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I couldn't find information about this in the knowledge base. I have created a support ticket for you.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Escalate to Human / Create Ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-012",
+      "query": "How to delete a document from the shared drive?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I couldn't find information about this in the knowledge base. I have created a support ticket for you.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Escalate to Human / Create Ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-013",
+      "query": "What is the process for requesting a new laptop?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I couldn't find information about this in the knowledge base. I have created a support ticket for you.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Escalate to Human / Create Ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-014",
+      "query": "In which way I can request a salary review?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I couldn't find information about this in the knowledge base. I have created a support ticket for you.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Escalate to Human / Create Ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-015",
+      "query": "What is the Wi-Fi password for the guest network?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I couldn't find information about this in the knowledge base. I have created a support ticket for you.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Escalate to Human / Create Ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-016",
+      "query": "How to properly onboard a new QA engineer?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I couldn't find information about this in the knowledge base. I have created a support ticket for you.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Escalate to Human / Create Ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-017",
+      "query": "What are the guidelines for remote work during power outages?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I couldn't find information about this in the knowledge base. I have created a support ticket for you.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Escalate to Human / Create Ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-018",
+      "query": "Whom should I contact if my Jira account is locked?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I couldn't find information about this in the knowledge base. I have created a support ticket for you.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Escalate to Human / Create Ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-019",
+      "query": "Where can I find the design mockups for the new mobile app?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I couldn't find information about this in the knowledge base. I have created a support ticket for you.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Escalate to Human / Create Ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-020",
+      "query": "How many vacation days do I have left?",
+      "question_type": "Unanswerable",
+      "expected_outcome": "INSUFFICIENT_EVIDENCE",
+      "expected_answer": "I couldn't find information about this in the knowledge base. I have created a support ticket for you.",
+      "expected_source": null,
+      "expected_document_ids": [],
+      "expected_behavior": "Escalate to Human / Create Ticket",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-021",
+      "query": "What tool is used for containerization in the CI/CD pipeline?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Docker",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-022",
+      "query": "Where are artifacts stored in the AWS infrastructure?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Amazon ECR",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-023",
+      "query": "What service is used for runtime orchestration?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Amazon EKS (Kubernetes)",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-024",
+      "query": "What event triggers the pipeline execution?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "GitHub webhook on a push event to main or release branches.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 1)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-025",
+      "query": "In which AWS region is the Infrastructure Engine located?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "us-east-1",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-026",
+      "query": "What version of Kubernetes is the Amazon EKS cluster running?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "v1.28",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-027",
+      "query": "Which managed database is used in the Database Layer?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Amazon Aurora PostgreSQL",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-028",
+      "query": "What happens during Stage 1 of the pipeline?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Checkout & Environment Initialization.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 1)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-029",
+      "query": "How are authentication credentials loaded in Stage 1?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Dynamically via AWS IAM Roles for Service Accounts (IRSA).",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 1)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-030",
+      "query": "What CLI tool is used in Stage 2 for container image construction?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "docker buildx",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 2)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-031",
+      "query": "How does the Dockerfile execution optimize layer caching?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "By separating dependency manifests from source code compilation.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 2)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-032",
+      "query": "What tool is used for Static Code Analysis (SCA) in Stage 3?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "SonarQube",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 3)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-033",
+      "query": "Which scanner is used for container vulnerability evaluation?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Trivy",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 3)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-034",
+      "query": "What causes the pipeline to halt during Stage 3?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "If a critical CVE threshold is breached.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 3)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-035",
+      "query": "What format is used for image tagging in Stage 4?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Semantic Versioning along with the short Git commit SHA.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-036",
+      "query": "How does the pipeline authenticate against AWS ECR?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Using a temporary token provided via aws ecr get-login-password.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-037",
+      "query": "What command is used for deployment in Stage 5?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "helm upgrade --install",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 5)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-038",
+      "query": "What endpoint is checked to ensure container health validation?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "/healthz endpoint returning HTTP 200.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 5)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-039",
+      "query": "What is the DB connection string for the Primary Production Cluster?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "[DB_PROD_CLUSTER]",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-040",
+      "query": "What parameter ensures read-only access in the Read-Replica Pool connection?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "target_session_attrs=read-only",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-041",
+      "query": "What is the connection string for the Elasticache Redis Cluster?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "[REDIS_PROD_CLUSTER]",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-042",
+      "query": "Which port is used for the Amazon MQ broker connection?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "61616",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-043",
+      "query": "What is the max frame size for the Amazon MQ connection?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "104857600",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-044",
+      "query": "What is the EKS API Server Endpoint URL?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "[EKS_ENDPOINT]",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-045",
+      "query": "What is the internal Service Mesh Ingress Endpoint?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "[ALB_ENDPOINT]",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 3)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-046",
+      "query": "What Jenkins version is used in the Automation Server?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Jenkins v2.414",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-047",
+      "query": "What type of agent execution does Jenkins use?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Docker-in-Docker (dind) execution agents.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-048",
+      "query": "What is the scaling policy for the Automation Server?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Dynamic Auto Scaling Group (1-10 instances).",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-049",
+      "query": "What type of base container is used for the Docker runtime?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Multi-stage alpine-based build containers.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-050",
+      "query": "What encryption is used at rest for the Amazon ECR Artifact Registry?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "AES-256 encryption.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-051",
+      "query": "What is the lifecycle rule for artifacts in Amazon ECR?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "30 days.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-052",
+      "query": "What EC2 instance type is used for Amazon EKS Managed Node Groups?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "m5.xlarge",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-053",
+      "query": "Which Container Network Interface (CNI) does the EKS cluster use?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Cilium CNI",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-054",
+      "query": "How many Availability Zones do the EKS auto-scaling groups span?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "3 Availability Zones.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-055",
+      "query": "What handles TLS Termination for Ingress Control?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "AWS Load Balancer Controller with ACM TLS Termination.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-056",
+      "query": "What load balancing strategy is used for the Ingress Controller?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Cross-zone load balancing with health checks.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-057",
+      "query": "What branch protection rule is applied in GitHub Enterprise?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Mandatory PR reviews on the main branch.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 4)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-058",
+      "query": "What type of subnet does the Jenkins Automation Server run in?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "VPC Private Subnet.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-059",
+      "query": "What type of K8s service is the api-backend-svc?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "ClusterIP Service.",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Section 1)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    },
+    {
+      "case_id": "GS-060",
+      "query": "How are Helm configuration values rendered?",
+      "question_type": "Answerable",
+      "expected_outcome": "ANSWER_EXPECTED",
+      "expected_answer": "Dynamically per environment target (Staging vs. Production).",
+      "expected_source": "SharePoint -> [Eng] Backend Deployment Pipeline Architecture (Stage 5)",
+      "expected_document_ids": [
+        "backend_deployment_pipeline_architecture.md",
+        "[Eng] Backend Deployment Pipeline Architecture.pdf",
+        "eng-backend-deployment-pipeline-architecture",
+        "13U1Hxp7O6fDVwFXOjZ9IHHw9ED-sOmT1"
+      ],
+      "expected_behavior": "Return Answer and Citation",
+      "user_permissions": {
+        "allowed_groups": [
+          "all-employees",
+          "Engineering - Backend",
+          "Engineering",
+          "All Staff"
+        ]
+      }
+    }
+  ],
+  "followup_jira_issues": [
+    "SCRUM-156",
+    "SCRUM-79",
+    "SCRUM-34"
+  ]
+}

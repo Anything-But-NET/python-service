@@ -23,6 +23,7 @@ from python_service.api.schemas import (
 )
 from python_service.config import Settings
 from python_service.db.service import RagDbService
+from python_service.models.domain import PromptVersion
 from python_service.services.llm_client import OpenAICompatibleClient
 
 if TYPE_CHECKING:
@@ -118,7 +119,21 @@ class GroundedAnswerService:
     async def generate(
         self,
         request: RagGenerationRequest,
+        *,
+        prompt_override: PromptVersion | None = None,
     ) -> RagGenerationResponse:
+        response, _ = await self.generate_with_evidence(
+            request,
+            prompt_override=prompt_override,
+        )
+        return response
+
+    async def generate_with_evidence(
+        self,
+        request: RagGenerationRequest,
+        *,
+        prompt_override: PromptVersion | None = None,
+    ) -> tuple[RagGenerationResponse, list[dict[str, Any]]]:
         query_id = request.query_id
         allowed_groups = request.user_permissions.allowed_groups
 
@@ -170,10 +185,13 @@ class GroundedAnswerService:
                 if not results
                 else RagGenerationStatus.LOW_CONFIDENCE
             )
-            return self._empty_response(query_id, status)
+            return self._empty_response(query_id, status), []
 
-        # Get prompt & metadata via TTL Cache
-        active_prompt_text, active_metadata = await self._get_current_prompt_config()
+        if prompt_override is not None:
+            active_prompt_text = prompt_override.prompt_text
+            active_metadata = dict(prompt_override.metadata or {})
+        else:
+            active_prompt_text, active_metadata = await self._get_current_prompt_config()
         messages = self._build_messages(active_prompt_text, request.query, passages)
 
         allowed_llm_keys = {"model", "temperature", "max_tokens"}
@@ -193,10 +211,10 @@ class GroundedAnswerService:
             generated = self._parse_generation(raw_response)
         except (json.JSONDecodeError, TypeError, ValueError, KeyError):
             logger.warning("LLM returned an invalid grounded response for query_id=%s", query_id)
-            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE)
+            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE), passages
 
         if generated["insufficient_evidence"]:
-            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE)
+            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE), passages
 
         answer = generated["answer"].strip()
         cited_ids = generated["cited_chunk_ids"]
@@ -205,7 +223,7 @@ class GroundedAnswerService:
         # Reject the entire answer if the model cites even one source it did not receive.
         has_unknown_citation = any(chunk_id not in passage_by_id for chunk_id in cited_ids)
         if not answer or not cited_ids or has_unknown_citation:
-            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE)
+            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE), passages
 
         citations = [
             RagCitation(
@@ -219,14 +237,17 @@ class GroundedAnswerService:
         evidence_confidence = min(citation.score for citation in citations)
         confidence = min(generated["confidence_score"], evidence_confidence)
         if confidence < self.settings.rag_min_confidence:
-            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE)
+            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE), passages
 
-        return RagGenerationResponse(
-            query_id=query_id,
-            status=RagGenerationStatus.ANSWER_GENERATED,
-            answer=answer,
-            confidence_score=confidence,
-            citations=citations,
+        return (
+            RagGenerationResponse(
+                query_id=query_id,
+                status=RagGenerationStatus.ANSWER_GENERATED,
+                answer=answer,
+                confidence_score=confidence,
+                citations=citations,
+            ),
+            passages,
         )
 
     def _prepare_passages(self, results: list[dict[str, Any]]) -> list[dict[str, Any]]:

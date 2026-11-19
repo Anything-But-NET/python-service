@@ -41,3 +41,4 @@ class EvaluationRun:
     prompt_version_id: uuid.UUID
     status: str
     metadata: dict = field(default_factory=dict)
+    created_at: datetime | None = None

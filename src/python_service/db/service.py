@@ -680,7 +680,8 @@ class RagDbService:
         """Create a new evaluation run record."""
         run_id = uuid.uuid4()
         pid = _to_uuid(prompt_version_id)
-        safe_meta = metadata or {}
+        safe_meta = _scrub_metadata(metadata or {})
+        now = datetime.now(UTC)
 
         async with self.session_factory() as session:
             try:
@@ -688,7 +689,8 @@ class RagDbService:
                     id=run_id,
                     prompt_version_id=pid,
                     status=status,
-                    run_metadata=safe_meta
+                    run_metadata=safe_meta,
+                    created_at=now,
                 )
                 session.add(new_run)
                 await session.commit()
@@ -697,8 +699,63 @@ class RagDbService:
                     id=run_id,
                     prompt_version_id=pid,
                     status=status,
-                    metadata=safe_meta
+                    metadata=safe_meta,
+                    created_at=new_run.created_at or now,
                 )
             except Exception:
                 await session.rollback()
                 raise
+
+    async def get_evaluation_run(
+            self,
+            run_id: uuid.UUID | str,
+    ) -> EvaluationRun | None:
+        """Fetch an evaluation run by ID."""
+        rid = _to_uuid(run_id)
+
+        async with self.session_factory() as session:
+            stmt = select(EvaluationRunEntity).where(EvaluationRunEntity.id == rid)
+            result = await session.scalars(stmt)
+            entity = result.first()
+
+            if not entity:
+                return None
+
+            return EvaluationRun(
+                id=entity.id,
+                prompt_version_id=entity.prompt_version_id,
+                status=entity.status,
+                metadata=entity.run_metadata,
+                created_at=entity.created_at,
+            )
+
+    async def update_evaluation_run(
+            self,
+            run_id: uuid.UUID | str,
+            status: str,
+            metadata: dict | None = None,
+    ) -> EvaluationRun | None:
+        """Update status and metadata of an existing evaluation run."""
+        rid = _to_uuid(run_id)
+        safe_meta = _scrub_metadata(metadata) if metadata is not None else None
+
+        async with self.session_factory() as session:
+            try:
+                entity = await session.get(EvaluationRunEntity, rid)
+                if entity is None:
+                    return None
+                entity.status = status
+                if safe_meta is not None:
+                    entity.run_metadata = safe_meta
+                await session.commit()
+                return EvaluationRun(
+                    id=entity.id,
+                    prompt_version_id=entity.prompt_version_id,
+                    status=entity.status,
+                    metadata=entity.run_metadata,
+                    created_at=entity.created_at,
+                )
+            except Exception:
+                await session.rollback()
+                raise
+
