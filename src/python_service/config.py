@@ -81,6 +81,10 @@ class Settings(BaseSettings):
         ge=1,
         validation_alias=AliasChoices("LLM_MAX_TOKENS"),
     )
+    llm_health_verify_remote: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("LLM_HEALTH_VERIFY_REMOTE"),
+    )
 
     # Grounded answer retrieval and evidence thresholds
     rag_retrieval_limit: int = Field(

@@ -166,6 +166,14 @@ class RagDbService:
     async def close(self) -> None:
         await self.engine.dispose()
 
+    async def check_health(self) -> bool:
+        try:
+            async with self.session_factory() as session:
+                await session.execute(text("SELECT 1"))
+            return True
+        except Exception:
+            return False
+
     async def _clear_document_data(
         self,
         session: AsyncSession,
