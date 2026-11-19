@@ -14,6 +14,7 @@ from python_service.api.routes import router
 from python_service.api.schemas import (
     EvaluationDatasetConfig,
     EvaluationRunCreateRequest,
+    EvaluationRunMetadataPayload,
     EvaluationRunStatus,
     ExpectedOutcomeType,
     QualityDimension,
@@ -639,3 +640,107 @@ async def test_evaluation_api_endpoints_post_and_get():
         get_resp = await client.get(f"/api/v1/rag/evaluations/runs/{run_id}")
         assert get_resp.status_code == 200
         assert get_resp.json()["id"] == str(run_id)
+
+
+@pytest.mark.asyncio
+async def test_running_and_failed_evaluation_runs_persist_valid_metadata_for_get_run(tmp_path: Path):
+    """Ensure GET /runs/{run_id} returns schema-valid payload (not 500) even when status is running or failed."""
+    stored_runs: dict[uuid.UUID, EvaluationRun] = {}
+    prompt_id = uuid.uuid4()
+    run_id = uuid.uuid4()
+
+    db = MagicMock()
+    db.get_prompt_version = AsyncMock(
+        return_value=PromptVersion(id=prompt_id, prompt_text="sys", metadata={"model": "gpt-4o-mini"})
+    )
+
+    async def _create_run(prompt_version_id, status, metadata):
+        record = EvaluationRun(
+            id=run_id,
+            prompt_version_id=prompt_version_id,
+            status=status,
+            metadata=metadata,
+            created_at=datetime.now(UTC),
+        )
+        stored_runs[run_id] = record
+        return record
+
+    async def _update_run(run_id, status, metadata=None):
+        existing = stored_runs[run_id]
+        updated = EvaluationRun(
+            id=existing.id,
+            prompt_version_id=existing.prompt_version_id,
+            status=status,
+            metadata=metadata if metadata is not None else existing.metadata,
+            created_at=existing.created_at,
+        )
+        stored_runs[run_id] = updated
+        return updated
+
+    async def _get_run(run_id):
+        return stored_runs.get(uuid.UUID(str(run_id)))
+
+    db.create_evaluation_run = AsyncMock(side_effect=_create_run)
+    db.update_evaluation_run = AsyncMock(side_effect=_update_run)
+    db.get_evaluation_run = AsyncMock(side_effect=_get_run)
+
+    ds_dir = tmp_path / "datasets"
+    ds_dir.mkdir()
+    (ds_dir / "golden_set_v1.json").write_text(
+        json.dumps(
+            {
+                "dataset_id": "mvp-golden-set",
+                "dataset_version": "v1.0.0",
+                "cases": [
+                    {
+                        "case_id": "GS-021",
+                        "query": "What tool is used for containerization?",
+                        "expected_outcome": "ANSWER_EXPECTED",
+                        "expected_answer": "Docker",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    grounded = MagicMock()
+    eval_service = EvaluationService(db=db, grounded_answer_service=grounded, datasets_dir=ds_dir)
+    # Simulate an unexpected runner-level crash after creating the 'running' row
+    eval_service._execute_case_against_rag = AsyncMock(side_effect=RuntimeError("unexpected runner crash"))
+
+    req = EvaluationRunCreateRequest(
+        prompt_version_id=prompt_id,
+        dataset=EvaluationDatasetConfig(dataset_id="mvp-golden-set", dataset_version="v1.0.0"),
+        thresholds=QualityThresholdsConfig(
+            decision_status=ThresholdDecisionStatus.PROPOSED,
+            relevance_min_score=0.75,
+            factual_grounding_min_score=0.85,
+            citation_correctness_min_score=1.0,
+            target_pass_rate=0.85,
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="unexpected runner crash"):
+        await eval_service.run_evaluation(req)
+
+    # Initial running metadata must already be schema-valid
+    initial_meta = db.create_evaluation_run.call_args.kwargs["metadata"]
+    EvaluationRunMetadataPayload(**initial_meta)
+
+    # GET on the failed run must return a valid EvaluationRunResponse (HTTP 200), never 500
+    app = FastAPI()
+    app.include_router(router)
+    install_generation_exception_handlers(app)
+    app.state.evaluation_service = eval_service
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get(f"/api/v1/rag/evaluations/runs/{run_id}")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "failed"
+    assert body["metadata"]["total_cases"] == 1
+    assert body["metadata"]["case_results"] == []
+

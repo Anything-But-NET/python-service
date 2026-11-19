@@ -655,10 +655,23 @@ class EvaluationService:
             known_limitations=known_limitations,
         )
 
+        followup_issues = list(raw_dataset.get("followup_jira_issues") or [])
+        initial_metadata = EvaluationRunMetadataPayload(
+            dataset=dataset_cfg,
+            thresholds=request.thresholds,
+            total_cases=len(raw_cases),
+            passed_cases=0,
+            failed_cases=0,
+            overall_pass_rate=0.0,
+            dimension_summaries=[],
+            followup_jira_issues=followup_issues,
+            case_results=[],
+        )
+
         running_record = await self.db.create_evaluation_run(
             prompt_version_id=request.prompt_version_id,
             status=EvaluationRunStatus.RUNNING.value,
-            metadata={},
+            metadata=initial_metadata.model_dump(mode="json"),
         )
 
         semaphore = asyncio.Semaphore(self.max_concurrency)
@@ -707,7 +720,7 @@ class EvaluationService:
                 failed_cases=failed_cases,
                 overall_pass_rate=overall_pass_rate,
                 dimension_summaries=dimension_summaries,
-                followup_jira_issues=list(raw_dataset.get("followup_jira_issues") or []),
+                followup_jira_issues=followup_issues,
                 case_results=case_results,
             )
 
@@ -729,6 +742,7 @@ class EvaluationService:
             await self.db.update_evaluation_run(
                 run_id=running_record.id,
                 status=EvaluationRunStatus.FAILED.value,
+                metadata=initial_metadata.model_dump(mode="json"),
             )
             raise
 

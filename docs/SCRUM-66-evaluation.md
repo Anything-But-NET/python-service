@@ -65,11 +65,13 @@ All four quality checks are implemented in `python_service.services.evaluation_s
 
 > **Important Governance Note:** All thresholds below carry `decision_status: "PROPOSED"`. They are proposals for technical lead / product review and must not be silently treated as approved product decisions until explicitly signed off in `SCRUM-34`.
 
-### 2.1. Proposed Thresholds vs. Observed Baseline Results
+### 2.1. Proposed Thresholds vs. Offline Simulation Baseline
 
-Dataset: `datasets/golden_set_v1.json` (`dataset_id: "mvp-golden-set"`, `dataset_version: "v1.0.0"`, 60 cases from `SCRUM-10` evaluated against the parsed `[Eng] Backend Deployment Pipeline Architecture` corpus):
+> **Scope Note (`SCRUM-66` vs `SCRUM-34`):** The baseline numbers below (`48 / 60`, `80.0%`) are produced by the deterministic offline test harness (`tests/test_evaluation_service.py::test_evaluation_service_runs_on_parsed_corpus_and_60_golden_set_cases`), which parses the actual `SCRUM-6` corpus with `MarkdownParserService` and runs the real `GroundedAnswerService` + `EvaluationService` pipelines, while substituting a deterministic lexical retriever and grounded response simulator in place of live `pgvector` + `BAAI/bge-m3` and a live LLM API. Executing the full end-to-end live LLM + `pgvector` evaluation run and publishing the Sprint 7 scorecard is tracked in **`SCRUM-34`** / **`SCRUM-121`**.
+
+Dataset: `datasets/golden_set_v1.json` (`dataset_id: "mvp-golden-set"`, `dataset_version: "v1.0.0"`, 60 cases from `SCRUM-10` evaluated against the parsed `[Eng] Backend Deployment Pipeline Architecture` corpus in the offline baseline):
 - **Total Cases Evaluated:** `60` (`40` answerable, `20` unanswerable)
-- **Overall Observed Pass Rate:** `0.8000` (`48 / 60` passed, `12 / 60` failed)
+- **Overall Baseline Pass Rate:** `0.8000` (`48 / 60` passed, `12 / 60` failed)
 
 | Dimension | Evaluated Cases | Passed Cases | Observed Pass Rate | Observed Mean Score | Proposed Case Min Score | Proposed Target Pass Rate | Decision Status | Meets Proposed Target? |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
