@@ -38,6 +38,15 @@ class VectorizationService:
         if self._owns_channel and self.channel is not None:
             self.channel.close()
 
+    def check_health(self, timeout: float = 1.5) -> bool:
+        if self.channel is None:
+            return False
+        try:
+            grpc.channel_ready_future(self.channel).result(timeout=timeout)
+            return True
+        except Exception:
+            return False
+
     def vectorize_query(self, query: str) -> np.ndarray:
         if not query or not query.strip():
             raise ValueError("Query cannot be empty")

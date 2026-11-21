@@ -227,3 +227,12 @@ class IngestionKafkaWorker:
         self._stop_event.set()
         logger.info("Flushing producer buffers...")
         self.producer.flush(10.0)
+
+    def check_health(self, timeout: float = 1.5) -> bool:
+        if self._stop_event.is_set() or self.producer is None:
+            return False
+        try:
+            metadata = self.producer.list_topics(timeout=timeout)
+            return metadata is not None and bool(getattr(metadata, "brokers", True))
+        except Exception:
+            return False

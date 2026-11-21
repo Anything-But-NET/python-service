@@ -11,6 +11,7 @@ from python_service.api.routes import router
 from python_service.config import get_settings
 from python_service.db.service import RagDbService
 from python_service.kafka.consumer import IngestionKafkaWorker
+from python_service.services.auth_client import CoreAuthClient
 from python_service.services.evaluation_service import EvaluationService
 from python_service.services.grounded_answer_service import GroundedAnswerService
 from python_service.services.llm_client import OpenAICompatibleClient
@@ -37,9 +38,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await db_service.init_schema()
 
     llm_client = OpenAICompatibleClient(settings)
+    auth_client = CoreAuthClient(settings)
+    app.state.settings = settings
     app.state.parser_service = parser_service
     app.state.vectorizer_service = vectorizer_service
     app.state.db_service = db_service
+    app.state.llm_client = llm_client
+    app.state.auth_client = auth_client
     app.state.grounded_answer_service = GroundedAnswerService(
         db=db_service,
         vectorizer=vectorizer_service,
@@ -68,6 +73,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="kafka-ingestion-worker",
         )
 
+    app.state.kafka_worker = kafka_worker
+    app.state.kafka_task = kafka_task
+
     try:
         yield
     finally:
@@ -78,6 +86,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             kafka_task.cancel()
             with suppress(asyncio.CancelledError):
                 await kafka_task
+        await auth_client.aclose()
         await llm_client.aclose()
         vectorizer_service.close()
         await db_service.close()

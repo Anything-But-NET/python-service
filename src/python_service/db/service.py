@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 
 import numpy as np
-from sqlalchemy import delete, select, text, desc
+from sqlalchemy import delete, func, select, text, desc
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -165,6 +165,14 @@ class RagDbService:
 
     async def close(self) -> None:
         await self.engine.dispose()
+
+    async def check_health(self) -> bool:
+        try:
+            async with self.session_factory() as session:
+                await session.execute(text("SELECT 1"))
+            return True
+        except Exception:
+            return False
 
     async def _clear_document_data(
         self,
@@ -652,6 +660,7 @@ class RagDbService:
                 id=entity.id,
                 prompt_text=entity.prompt_text,
                 metadata=entity.prompt_metadata,
+                created_at=entity.created_at,
             )
 
     async def get_latest_prompt_version(self) -> PromptVersion | None:
@@ -669,7 +678,34 @@ class RagDbService:
                 id=entity.id,
                 prompt_text=entity.prompt_text,
                 metadata=entity.prompt_metadata,
+                created_at=entity.created_at,
             )
+
+    async def list_prompt_versions(
+            self,
+            page: int = 0,
+            size: int = 20,
+    ) -> tuple[list[PromptVersion], int]:
+        """Return paginated prompt versions ordered by created_at DESC and total count."""
+        async with self.session_factory() as session:
+            total = await session.scalar(select(func.count()).select_from(PromptVersionEntity)) or 0
+            stmt = (
+                select(PromptVersionEntity)
+                .order_by(PromptVersionEntity.created_at.desc())
+                .offset(page * size)
+                .limit(size)
+            )
+            entities = (await session.scalars(stmt)).all()
+            items = [
+                PromptVersion(
+                    id=entity.id,
+                    prompt_text=entity.prompt_text,
+                    metadata=entity.prompt_metadata,
+                    created_at=entity.created_at,
+                )
+                for entity in entities
+            ]
+            return items, int(total)
 
     async def create_evaluation_run(
             self,

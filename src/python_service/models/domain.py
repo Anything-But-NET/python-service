@@ -34,6 +34,7 @@ class PromptVersion:
     id: uuid.UUID
     prompt_text: str
     metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime | None = None
 
 @dataclass
 class EvaluationRun:

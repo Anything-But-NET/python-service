@@ -69,6 +69,7 @@ def service(settings):
     db.get_or_create_prompt_version = AsyncMock()
 
     mock_prompt = MagicMock()
+    mock_prompt.id = uuid.uuid4()
     mock_prompt.prompt_text = SYSTEM_PROMPT
     mock_prompt.metadata = {"model": "test-model"}
     db.get_or_create_prompt_version.return_value = mock_prompt

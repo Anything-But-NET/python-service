@@ -81,6 +81,10 @@ class Settings(BaseSettings):
         ge=1,
         validation_alias=AliasChoices("LLM_MAX_TOKENS"),
     )
+    llm_health_verify_remote: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("LLM_HEALTH_VERIFY_REMOTE"),
+    )
 
     # Grounded answer retrieval and evidence thresholds
     rag_retrieval_limit: int = Field(
@@ -115,6 +119,17 @@ class Settings(BaseSettings):
     datasets_dir: str = Field(
         default="datasets",
         validation_alias=AliasChoices("DATASETS_DIR", "RAG_DATASETS_DIR"),
+    )
+
+    # Core (Java) service internal auth introspection
+    core_api_url: str = Field(
+        default="http://localhost:8080",
+        validation_alias=AliasChoices("CORE_API_URL", "JAVA_SERVICE_URL"),
+    )
+    core_introspect_timeout_seconds: float = Field(
+        default=5.0,
+        gt=0.0,
+        validation_alias=AliasChoices("CORE_INTROSPECT_TIMEOUT_SECONDS"),
     )
 
     # FastAPI / Uvicorn settings
