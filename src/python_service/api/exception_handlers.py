@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 import json
 import logging
 import time
@@ -8,17 +9,26 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from python_service.api.errors import GenerationServiceError
-from python_service.api.schemas import GenerationError, GenerationErrorStatus
+from python_service.api.errors import DashboardApiError, GenerationServiceError
+from python_service.api.schemas import (
+    DashboardErrorCode,
+    DashboardErrorResponse,
+    GenerationError,
+    GenerationErrorStatus,
+)
 
 logger = logging.getLogger(__name__)
 _GENERATE_PATH = "/api/v1/rag/generate"
 _EVALUATIONS_PREFIX = "/api/v1/rag/evaluations/runs"
+_DASH_PREFIX = "/api/v1/dash/"
 
 
 def _is_rag_contract_path(path: str) -> bool:
     return path == _GENERATE_PATH or path.startswith(_EVALUATIONS_PREFIX)
 
+
+def _is_dashboard_path(path: str) -> bool:
+    return path.startswith(_DASH_PREFIX)
 
 
 def _query_id_from_body(body: Any) -> str | None:
@@ -28,11 +38,27 @@ def _query_id_from_body(body: Any) -> str | None:
     return value.strip() if isinstance(value, str) and value.strip() else None
 
 
+def _dashboard_error_json(http_status: int, code: DashboardErrorCode, message: str) -> JSONResponse:
+    error = DashboardErrorResponse(
+        error_code=code,
+        message=message,
+        timestamp=datetime.now(UTC),
+    )
+    return JSONResponse(status_code=http_status, content=error.model_dump(mode="json"))
+
+
 def install_generation_exception_handlers(app: FastAPI) -> None:
     async def validation_error_handler(
         request: Request,
         exc: RequestValidationError,
     ) -> JSONResponse:
+        if _is_dashboard_path(request.url.path):
+            first = exc.errors()[0] if exc.errors() else {}
+            loc = ".".join(str(part) for part in first.get("loc", ()) if part not in ("query", "path", "body"))
+            msg = first.get("msg", "Invalid request parameters.")
+            message = f"Invalid parameter '{loc}': {msg}" if loc else msg
+            return _dashboard_error_json(400, DashboardErrorCode.BAD_REQUEST, message)
+
         if not _is_rag_contract_path(request.url.path):
             return await request_validation_exception_handler(request, exc)
 
@@ -84,7 +110,20 @@ def install_generation_exception_handlers(app: FastAPI) -> None:
             content=error.model_dump(mode="json"),
         )
 
+    async def dashboard_api_error_handler(
+        request: Request,
+        exc: DashboardApiError,
+    ) -> JSONResponse:
+        return _dashboard_error_json(exc.http_status, exc.error_code, exc.message)
+
     async def unexpected_error_handler(request: Request, exc: Exception):
+        if _is_dashboard_path(request.url.path):
+            logger.error(
+                "Unhandled dashboard API error",
+                exc_info=(type(exc), exc, exc.__traceback__),
+            )
+            return _dashboard_error_json(500, DashboardErrorCode.INTERNAL_ERROR, "An unexpected error occurred.")
+
         if not _is_rag_contract_path(request.url.path):
             logger.error(
                 "Unhandled API error",
@@ -107,4 +146,5 @@ def install_generation_exception_handlers(app: FastAPI) -> None:
 
     app.add_exception_handler(RequestValidationError, validation_error_handler)
     app.add_exception_handler(GenerationServiceError, generation_service_error_handler)
+    app.add_exception_handler(DashboardApiError, dashboard_api_error_handler)
     app.add_exception_handler(Exception, unexpected_error_handler)

@@ -121,7 +121,50 @@ class RagGenerationResponse(BaseModel):
     status: RagGenerationStatus
     answer: str | None = None
     confidence_score: float = Field(ge=0.0, le=1.0)
+    prompt_version_id: uuid.UUID | None = None
     citations: list[RagCitation]
+
+
+class DashboardErrorCode(str, Enum):
+    BAD_REQUEST = "BAD_REQUEST"
+    UNAUTHORIZED = "UNAUTHORIZED"
+    FORBIDDEN = "FORBIDDEN"
+    NOT_FOUND = "NOT_FOUND"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+
+
+class DashboardErrorResponse(BaseModel):
+    error_code: DashboardErrorCode
+    message: str
+    timestamp: datetime
+
+
+class TokenIntrospectResponse(BaseModel):
+    active: bool
+    operator_id: uuid.UUID | None = None
+    email: str | None = None
+    status: str | None = None
+    authorities: list[str] = Field(default_factory=list)
+
+
+class PromptVersionSummary(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+
+
+class PromptVersionDetail(BaseModel):
+    id: uuid.UUID
+    prompt_text: str
+    metadata: dict[str, Any]
+    created_at: datetime
+
+
+class PromptVersionsPage(BaseModel):
+    items: list[PromptVersionSummary]
+    page: int = Field(ge=0)
+    size: int = Field(ge=1)
+    total_elements: int = Field(ge=0)
+    total_pages: int = Field(ge=0)
 
 class PromptMetadata(BaseModel):
     model_config = ConfigDict(extra="allow")
