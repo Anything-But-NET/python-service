@@ -1,23 +1,31 @@
 import asyncio
+import math
 from typing import Annotated, Any
 import uuid
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 
 from python_service.api.dependencies import (
     get_db_service,
     get_evaluation_service,
     get_grounded_answer_service,
     get_vectorizer_service,
+    require_dashboard_authority,
 )
+from python_service.api.errors import DashboardApiError
 from python_service.api.schemas import (
     ComponentHealth,
+    DashboardErrorCode,
+    DashboardErrorResponse,
     EvaluationRunCreateRequest,
     EvaluationRunResponse,
     GenerationError,
     HealthComponents,
     HealthResponse,
     HealthStatus,
+    PromptVersionDetail,
+    PromptVersionsPage,
+    PromptVersionSummary,
     RagCitation,
     RagGenerationRequest,
     RagGenerationResponse,
@@ -251,4 +259,65 @@ async def get_evaluation_run(
     service: Annotated[EvaluationService, Depends(get_evaluation_service)],
 ) -> EvaluationRunResponse:
     return await service.get_run(str(run_id))
+
+
+@router.get(
+    "/api/v1/dash/prompts",
+    response_model=PromptVersionsPage,
+    dependencies=[Depends(require_dashboard_authority("PROMPTS"))],
+    responses={
+        400: {"model": DashboardErrorResponse, "description": "Bad Request."},
+        401: {"model": DashboardErrorResponse, "description": "Unauthorized."},
+        403: {"model": DashboardErrorResponse, "description": "Forbidden."},
+    },
+    tags=["Dashboard: Prompts (RAG)"],
+)
+async def list_prompt_versions(
+    db: Annotated[RagDbService, Depends(get_db_service)],
+    page: int = Query(default=0, ge=0),
+    size: int = Query(default=20, ge=1, le=100),
+) -> PromptVersionsPage:
+    prompts, total_elements = await db.list_prompt_versions(page=page, size=size)
+    total_pages = math.ceil(total_elements / size) if total_elements > 0 else 0
+    return PromptVersionsPage(
+        items=[
+            PromptVersionSummary(id=prompt.id, created_at=prompt.created_at)
+            for prompt in prompts
+        ],
+        page=page,
+        size=size,
+        total_elements=total_elements,
+        total_pages=total_pages,
+    )
+
+
+@router.get(
+    "/api/v1/dash/prompts/{prompt_version_id}",
+    response_model=PromptVersionDetail,
+    dependencies=[Depends(require_dashboard_authority("PROMPTS"))],
+    responses={
+        400: {"model": DashboardErrorResponse, "description": "Bad Request."},
+        401: {"model": DashboardErrorResponse, "description": "Unauthorized."},
+        403: {"model": DashboardErrorResponse, "description": "Forbidden."},
+        404: {"model": DashboardErrorResponse, "description": "Prompt version not found."},
+    },
+    tags=["Dashboard: Prompts (RAG)"],
+)
+async def get_prompt_version_by_id(
+    prompt_version_id: uuid.UUID,
+    db: Annotated[RagDbService, Depends(get_db_service)],
+) -> PromptVersionDetail:
+    prompt = await db.get_prompt_version(prompt_version_id)
+    if prompt is None:
+        raise DashboardApiError(
+            http_status=404,
+            error_code=DashboardErrorCode.NOT_FOUND,
+            message=f"Prompt version '{prompt_version_id}' not found.",
+        )
+    return PromptVersionDetail(
+        id=prompt.id,
+        prompt_text=prompt.prompt_text,
+        metadata=prompt.metadata,
+        created_at=prompt.created_at,
+    )
 

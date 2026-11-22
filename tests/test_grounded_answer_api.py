@@ -45,6 +45,7 @@ async def test_generate_endpoint_matches_java_rag_contract():
         "status": "ANSWER_GENERATED",
         "answer": "Submit the request through the HR portal.",
         "confidence_score": 0.91,
+        "prompt_version_id": None,
         "citations": [{
             "document_id": "document-1",
             "chunk_id": "chunk-1",

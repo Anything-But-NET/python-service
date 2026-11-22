@@ -121,6 +121,17 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DATASETS_DIR", "RAG_DATASETS_DIR"),
     )
 
+    # Core (Java) service internal auth introspection
+    core_api_url: str = Field(
+        default="http://localhost:8080",
+        validation_alias=AliasChoices("CORE_API_URL", "JAVA_SERVICE_URL"),
+    )
+    core_introspect_timeout_seconds: float = Field(
+        default=5.0,
+        gt=0.0,
+        validation_alias=AliasChoices("CORE_INTROSPECT_TIMEOUT_SECONDS"),
+    )
+
     # FastAPI / Uvicorn settings
     api_host: str = Field(
         default="0.0.0.0",

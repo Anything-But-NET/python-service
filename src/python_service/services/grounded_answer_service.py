@@ -80,20 +80,22 @@ class GroundedAnswerService:
         self.settings = settings
         # State for TTL cache
         self._CACHE_TTL = 300.0
+        self._cached_prompt_id: uuid.UUID | None = None
         self._cached_prompt: str = SYSTEM_PROMPT
         self._cached_metadata: dict = {"model": self.settings.llm_model}
         self._cache_expires_at: float = 0.0
 
-    async def _get_current_prompt_config(self) -> tuple[str, dict]:
+    async def _get_current_prompt_config(self) -> tuple[uuid.UUID | None, str, dict]:
         """Fetch prompt from DB with a 5-minute TTL cache and robust fallback."""
         current_time = time.time()
 
         if current_time < self._cache_expires_at:
-            return self._cached_prompt, self._cached_metadata
+            return self._cached_prompt_id, self._cached_prompt, self._cached_metadata
 
         try:
             latest = await self.db.get_latest_prompt_version()
             if latest:
+                self._cached_prompt_id = latest.id
                 self._cached_prompt = latest.prompt_text
                 self._cached_metadata = latest.metadata
             else:
@@ -103,6 +105,7 @@ class GroundedAnswerService:
                     prompt_text=SYSTEM_PROMPT,
                     metadata=default_metadata
                 )
+                self._cached_prompt_id = created.id
                 self._cached_prompt = created.prompt_text
                 self._cached_metadata = created.metadata
 
@@ -113,7 +116,7 @@ class GroundedAnswerService:
             # Set a short backoff (30s) so we don't spam the failing DB on every request
             self._cache_expires_at = current_time + 30.0
 
-        return self._cached_prompt, self._cached_metadata
+        return self._cached_prompt_id, self._cached_prompt, self._cached_metadata
 
 
     async def generate(
@@ -188,10 +191,11 @@ class GroundedAnswerService:
             return self._empty_response(query_id, status), []
 
         if prompt_override is not None:
+            active_prompt_id = prompt_override.id
             active_prompt_text = prompt_override.prompt_text
             active_metadata = dict(prompt_override.metadata or {})
         else:
-            active_prompt_text, active_metadata = await self._get_current_prompt_config()
+            active_prompt_id, active_prompt_text, active_metadata = await self._get_current_prompt_config()
         messages = self._build_messages(active_prompt_text, request.query, passages)
 
         allowed_llm_keys = {"model", "temperature", "max_tokens"}
@@ -211,10 +215,10 @@ class GroundedAnswerService:
             generated = self._parse_generation(raw_response)
         except (json.JSONDecodeError, TypeError, ValueError, KeyError):
             logger.warning("LLM returned an invalid grounded response for query_id=%s", query_id)
-            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE), passages
+            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE, active_prompt_id), passages
 
         if generated["insufficient_evidence"]:
-            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE), passages
+            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE, active_prompt_id), passages
 
         answer = generated["answer"].strip()
         cited_ids = generated["cited_chunk_ids"]
@@ -223,7 +227,7 @@ class GroundedAnswerService:
         # Reject the entire answer if the model cites even one source it did not receive.
         has_unknown_citation = any(chunk_id not in passage_by_id for chunk_id in cited_ids)
         if not answer or not cited_ids or has_unknown_citation:
-            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE), passages
+            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE, active_prompt_id), passages
 
         citations = [
             RagCitation(
@@ -237,7 +241,7 @@ class GroundedAnswerService:
         evidence_confidence = min(citation.score for citation in citations)
         confidence = min(generated["confidence_score"], evidence_confidence)
         if confidence < self.settings.rag_min_confidence:
-            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE), passages
+            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE, active_prompt_id), passages
 
         return (
             RagGenerationResponse(
@@ -245,6 +249,7 @@ class GroundedAnswerService:
                 status=RagGenerationStatus.ANSWER_GENERATED,
                 answer=answer,
                 confidence_score=confidence,
+                prompt_version_id=active_prompt_id,
                 citations=citations,
             ),
             passages,
@@ -364,11 +369,13 @@ class GroundedAnswerService:
     def _empty_response(
         query_id: str,
         status: RagGenerationStatus,
+        prompt_version_id: uuid.UUID | None = None,
     ) -> RagGenerationResponse:
         return RagGenerationResponse(
             query_id=query_id,
             status=status,
             answer=None,
             confidence_score=0.0,
+            prompt_version_id=prompt_version_id,
             citations=[],
         )

@@ -1,4 +1,4 @@
-from python_service.api.schemas import GenerationErrorStatus
+from python_service.api.schemas import DashboardErrorCode, GenerationErrorStatus
 
 
 class GenerationServiceError(RuntimeError):
@@ -19,3 +19,18 @@ class GenerationServiceError(RuntimeError):
         self.query_id = query_id
         self.http_status = http_status
         self.description = description
+
+
+class DashboardApiError(RuntimeError):
+    """Structured error for Web Dashboard endpoints (/api/v1/dash/*)."""
+
+    def __init__(
+        self,
+        http_status: int,
+        error_code: DashboardErrorCode,
+        message: str,
+    ) -> None:
+        super().__init__(message)
+        self.http_status = http_status
+        self.error_code = error_code
+        self.message = message
