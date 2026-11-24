@@ -319,11 +319,11 @@ class GroundedAnswerService:
     def _build_messages(prompt_text: str, query: str, passages: list[dict[str, Any]]) -> list[dict[str, str]]:
         """Build a provider-compatible prompt with an explicit untrusted-data boundary.
 
-        Keep the immutable policy in the system message. A versioned prompt is
-        serialized as lower-priority configuration data in that same message so
-        providers that support only system/user roles can process the request.
-        Retrieved content is JSON-encoded in the user message.
-        """
+A versioned prompt is serialized as untrusted configuration data
+in the user message, so it does not receive system-level authority.
+This allows providers that support only system/user roles to process
+the request. Retrieved content is JSON-encoded in the user message.
+"""
 
         normalized_prompt = prompt_text.strip()
         payload = {
