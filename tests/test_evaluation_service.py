@@ -411,12 +411,11 @@ async def test_prompt_override_uses_requested_prompt_version_and_single_retrieva
     llm.generate_json.assert_awaited_once()
     sent_messages = llm.generate_json.call_args.args[0]
     sent_kwargs = llm.generate_json.call_args.kwargs
-    assert sent_messages[0]["role"] == "system"
-    assert sent_messages[0]["content"] == SYSTEM_PROMPT
-    assert sent_messages[1] == {
-        "role": "developer",
-        "content": "CUSTOM_OLDER_PROMPT_TEXT_FOR_EVALUATION",
-    }
+    assert sent_messages[0] == {"role": "system", "content": SYSTEM_PROMPT}
+    assert sent_messages[1]["role"] == "user"
+    payload_text = sent_messages[1]["content"].split("\n", 1)[1]
+    payload = json.loads(payload_text)
+    assert payload["versioned_prompt"] == "CUSTOM_OLDER_PROMPT_TEXT_FOR_EVALUATION"
     assert sent_kwargs == {"model": "custom-eval-model-v1", "temperature": 0.1, "max_tokens": 500}
 
 

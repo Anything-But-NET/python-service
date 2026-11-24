@@ -16,9 +16,9 @@ An answer is returned only when retrieval has evidence above the configured rele
 
 ## Prompt-injection handling
 
-The immutable security and answer policy is always sent in a `system` message. A non-default, versioned prompt is sent separately as a `developer` message and cannot replace the system policy. The question and retrieved passages are JSON-serialized in a `user` message; retrieved passage text is explicitly designated untrusted reference data, never instructions. Quotes, newlines, JSON fragments, and instruction-like text inside a passage remain string values in that JSON payload and cannot create additional chat messages. No tools are exposed to the model. The response parser never executes model output and rejects citations that were not part of the retrieved evidence.
+The immutable security and answer policy is sent alone in a `system` message. A non-default, versioned prompt is JSON-serialized as untrusted configuration data in the `user` message, alongside the question and retrieved passages, so it does not receive system-level authority and avoids provider-specific roles such as `developer`. The system policy permits only harmless style preferences from this configuration and explicitly rejects changes to security rules, evidence requirements, permissions, disclosure rules, tool use, or the required JSON response schema. Retrieved passage text is also untrusted reference data, never instructions. JSON serialization preserves quotes, newlines, and embedded JSON as string values; it does not itself prevent model-level prompt injection. No tools are exposed to the model. The response parser never executes model output and rejects citations that were not part of the retrieved evidence.
 
-This is defense-in-depth at the prompt/data boundary; it does not replace provider-side safety controls or the SCRUM-149 adversarial test suite.
+This is defense-in-depth at the prompt/data boundary, not a hard isolation boundary or a guarantee against model-level prompt injection. It does not replace provider-side safety controls or the SCRUM-149 adversarial test suite.
 
 ## Configuration
 
