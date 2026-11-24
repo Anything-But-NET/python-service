@@ -537,7 +537,7 @@ async def test_evaluation_service_runs_on_parsed_corpus_and_60_golden_set_cases(
         prompt_version_id=prompt_id,
         dataset=EvaluationDatasetConfig(
             dataset_id="mvp-golden-set",
-            dataset_version="v1.0.0",
+            dataset_version="v1.1.0",
         ),
         thresholds=QualityThresholdsConfig(
             decision_status=ThresholdDecisionStatus.PROPOSED,

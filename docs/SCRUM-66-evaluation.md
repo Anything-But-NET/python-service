@@ -126,7 +126,7 @@ curl -X POST http://localhost:8000/api/v1/rag/evaluations/runs \
     "prompt_version_id": "00000000-0000-0000-0000-000000000001",
     "dataset": {
       "dataset_id": "mvp-golden-set",
-      "dataset_version": "v1.0.0",
+      "dataset_version": "v1.1.0",
       "dataset_path": "golden_set_v1.json"
     },
     "thresholds": {

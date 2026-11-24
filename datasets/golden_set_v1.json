@@ -1,6 +1,6 @@
 {
   "dataset_id": "mvp-golden-set",
-  "dataset_version": "v1.0.0",
+  "dataset_version": "v1.1.0",
   "source_jira_issue": "SCRUM-10",
   "known_limitations": [
     "All 40 answerable questions target a single technical document ([Eng] Backend Deployment Pipeline Architecture).",
@@ -25,7 +25,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "SAFE_NO_ANSWER",
+      "question_scope": "OUT_OF_SCOPE",
+      "source_availability": "NOT_APPLICABLE"
     },
     {
       "case_id": "GS-002",
@@ -43,7 +46,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "SAFE_NO_ANSWER",
+      "question_scope": "RESTRICTED",
+      "source_availability": "NOT_APPLICABLE"
     },
     {
       "case_id": "GS-003",
@@ -61,7 +67,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "SAFE_NO_ANSWER",
+      "question_scope": "OUT_OF_SCOPE",
+      "source_availability": "NOT_APPLICABLE"
     },
     {
       "case_id": "GS-004",
@@ -79,7 +88,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "SAFE_NO_ANSWER",
+      "question_scope": "OUT_OF_SCOPE",
+      "source_availability": "NOT_APPLICABLE"
     },
     {
       "case_id": "GS-005",
@@ -97,7 +109,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "SAFE_NO_ANSWER",
+      "question_scope": "RESTRICTED",
+      "source_availability": "NOT_APPLICABLE"
     },
     {
       "case_id": "GS-006",
@@ -115,7 +130,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "SAFE_NO_ANSWER",
+      "question_scope": "OUT_OF_SCOPE",
+      "source_availability": "NOT_APPLICABLE"
     },
     {
       "case_id": "GS-007",
@@ -133,7 +151,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "SAFE_NO_ANSWER",
+      "question_scope": "OUT_OF_SCOPE",
+      "source_availability": "NOT_APPLICABLE"
     },
     {
       "case_id": "GS-008",
@@ -151,7 +172,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "SAFE_NO_ANSWER",
+      "question_scope": "OUT_OF_SCOPE",
+      "source_availability": "NOT_APPLICABLE"
     },
     {
       "case_id": "GS-009",
@@ -169,7 +193,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "SAFE_NO_ANSWER",
+      "question_scope": "OUT_OF_SCOPE",
+      "source_availability": "NOT_APPLICABLE"
     },
     {
       "case_id": "GS-010",
@@ -187,7 +214,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "SAFE_NO_ANSWER",
+      "question_scope": "OUT_OF_SCOPE",
+      "source_availability": "NOT_APPLICABLE"
     },
     {
       "case_id": "GS-011",
@@ -205,7 +235,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ESCALATE_TO_HUMAN",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "NOT_FOUND_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-012",
@@ -223,7 +256,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ESCALATE_TO_HUMAN",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "NOT_FOUND_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-013",
@@ -241,7 +277,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ESCALATE_TO_HUMAN",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "NOT_FOUND_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-014",
@@ -259,7 +298,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ESCALATE_TO_HUMAN",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "NOT_FOUND_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-015",
@@ -277,7 +319,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ESCALATE_TO_HUMAN",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "NOT_FOUND_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-016",
@@ -295,7 +340,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ESCALATE_TO_HUMAN",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "NOT_FOUND_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-017",
@@ -313,7 +361,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ESCALATE_TO_HUMAN",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "NOT_FOUND_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-018",
@@ -331,7 +382,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ESCALATE_TO_HUMAN",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "NOT_FOUND_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-019",
@@ -349,7 +403,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ESCALATE_TO_HUMAN",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "NOT_FOUND_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-020",
@@ -367,7 +424,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ESCALATE_TO_HUMAN",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "NOT_FOUND_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-021",
@@ -390,7 +450,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-022",
@@ -413,7 +476,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-023",
@@ -436,7 +502,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-024",
@@ -459,7 +528,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-025",
@@ -482,7 +554,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-026",
@@ -505,7 +580,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-027",
@@ -528,7 +606,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-028",
@@ -551,7 +632,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-029",
@@ -574,7 +658,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-030",
@@ -597,7 +684,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-031",
@@ -620,7 +710,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-032",
@@ -643,7 +736,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-033",
@@ -666,7 +762,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-034",
@@ -689,7 +788,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-035",
@@ -712,7 +814,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-036",
@@ -735,7 +840,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-037",
@@ -758,7 +866,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-038",
@@ -781,7 +892,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-039",
@@ -804,7 +918,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-040",
@@ -827,7 +944,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-041",
@@ -850,7 +970,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-042",
@@ -873,7 +996,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-043",
@@ -896,7 +1022,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-044",
@@ -919,7 +1048,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-045",
@@ -942,7 +1074,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-046",
@@ -965,7 +1100,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-047",
@@ -988,7 +1126,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-048",
@@ -1011,7 +1152,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-049",
@@ -1034,7 +1178,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-050",
@@ -1057,7 +1204,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-051",
@@ -1080,7 +1230,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-052",
@@ -1103,7 +1256,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-053",
@@ -1126,7 +1282,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-054",
@@ -1149,7 +1308,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-055",
@@ -1172,7 +1334,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-056",
@@ -1195,7 +1360,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-057",
@@ -1218,7 +1386,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-058",
@@ -1241,7 +1412,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-059",
@@ -1264,7 +1438,10 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     },
     {
       "case_id": "GS-060",
@@ -1287,12 +1464,22 @@
           "Engineering",
           "All Staff"
         ]
-      }
+      },
+      "expected_action": "ANSWER_WITH_CITATION",
+      "question_scope": "IN_SCOPE",
+      "source_availability": "AVAILABLE_IN_EVALUATED_CORPUS"
     }
   ],
   "followup_jira_issues": [
     "SCRUM-156",
     "SCRUM-79",
     "SCRUM-34"
+  ],
+  "label_schema_version": "1.0.0",
+  "labeling_notes": [
+    "expected_action separates answer-with-citation, safe no-answer, and human escalation.",
+    "question_scope distinguishes in-scope, out-of-scope, and restricted requests.",
+    "AMBIGUOUS is a supported label, but v1.1.0 contains zero ambiguous cases; this is a coverage gap, not an inferred label.",
+    "source_availability describes the evaluated corpus, not every document that may exist elsewhere in the company."
   ]
 }
