@@ -241,7 +241,12 @@ class GroundedAnswerService:
         evidence_confidence = min(citation.score for citation in citations)
         confidence = min(generated["confidence_score"], evidence_confidence)
         if confidence < self.settings.rag_min_confidence:
-            return self._empty_response(query_id, RagGenerationStatus.LOW_CONFIDENCE, active_prompt_id), passages
+            return self._empty_response(
+                query_id,
+                RagGenerationStatus.LOW_CONFIDENCE,
+                active_prompt_id,
+                confidence_score=confidence,
+            ), passages
 
         return (
             RagGenerationResponse(
@@ -370,12 +375,13 @@ class GroundedAnswerService:
         query_id: str,
         status: RagGenerationStatus,
         prompt_version_id: uuid.UUID | None = None,
+        confidence_score: float | None = None,
     ) -> RagGenerationResponse:
         return RagGenerationResponse(
             query_id=query_id,
             status=status,
             answer=None,
-            confidence_score=0.0,
+            confidence_score=confidence_score,
             prompt_version_id=prompt_version_id,
             citations=[],
         )

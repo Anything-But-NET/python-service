@@ -120,7 +120,7 @@ class RagGenerationResponse(BaseModel):
     query_id: str
     status: RagGenerationStatus
     answer: str | None = None
-    confidence_score: float = Field(ge=0.0, le=1.0)
+    confidence_score: float | None = Field(default=None, ge=0.0, le=1.0)
     prompt_version_id: uuid.UUID | None = None
     citations: list[RagCitation]
 
