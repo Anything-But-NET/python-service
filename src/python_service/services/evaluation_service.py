@@ -525,7 +525,7 @@ class EvaluationService:
             expected_document_ids=expected_docs,
             actual_status=actual_status,
             actual_answer=actual_answer,
-            actual_confidence_score=round(float(actual_confidence), 4),
+            actual_confidence_score=round(float(actual_confidence or 0.0), 4),
             actual_citations=actual_citations,
             passed=passed,
             checks=CaseQualityChecks(
@@ -612,7 +612,7 @@ class EvaluationService:
             return (
                 gen_resp.status,
                 gen_resp.answer,
-                gen_resp.confidence_score,
+                gen_resp.confidence_score if gen_resp.confidence_score is not None else 0.0,
                 gen_resp.citations,
                 passages,
                 None,
