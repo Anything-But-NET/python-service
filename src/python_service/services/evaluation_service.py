@@ -406,7 +406,12 @@ class EvaluationService:
                 else (allowed_dir / raw_path).resolve()
             )
         else:
-            candidate = (allowed_dir / "golden_set_v1.json").resolve()
+            default_files = {
+                "v1.0.0": "golden_set_v1.json",
+                "v1.1.0": "golden_set_v1_1.json",
+            }
+            default_file = default_files.get(dataset_config.dataset_version, "golden_set_v1.json")
+            candidate = (allowed_dir / default_file).resolve()
 
         if not candidate.is_relative_to(allowed_dir):
             raise GenerationServiceError(
