@@ -411,11 +411,21 @@ async def test_prompt_override_uses_requested_prompt_version_and_single_retrieva
     llm.generate_json.assert_awaited_once()
     sent_messages = llm.generate_json.call_args.args[0]
     sent_kwargs = llm.generate_json.call_args.kwargs
-    assert sent_messages[0] == {"role": "system", "content": SYSTEM_PROMPT}
-    assert sent_messages[1]["role"] == "user"
+    assert [message["role"] for message in sent_messages] == ["system", "user"]
+    system_content = sent_messages[0]["content"]
+    serialized_prompt = json.dumps(
+        {"prompt_text": "CUSTOM_OLDER_PROMPT_TEXT_FOR_EVALUATION"},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    assert system_content.startswith(SYSTEM_PROMPT.rstrip())
+    assert serialized_prompt in system_content
+    assert system_content.index(serialized_prompt) < system_content.index(
+        "FINAL IMMUTABLE SECURITY REMINDER"
+    )
     payload_text = sent_messages[1]["content"].split("\n", 1)[1]
     payload = json.loads(payload_text)
-    assert payload["versioned_prompt"] == "CUSTOM_OLDER_PROMPT_TEXT_FOR_EVALUATION"
+    assert "versioned_prompt" not in payload
     assert sent_kwargs == {"model": "custom-eval-model-v1", "temperature": 0.1, "max_tokens": 500}
 
 
