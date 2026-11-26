@@ -9,6 +9,7 @@ Run:
 """
 
 import os
+import uuid
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -56,6 +57,7 @@ async def _generate_with_live_provider(query: str):
     db.get_latest_prompt_version = AsyncMock(return_value=None)
     db.get_or_create_prompt_version = AsyncMock(
         return_value=SimpleNamespace(
+            id=str(uuid.uuid4()),
             prompt_text="Answer accurately and concisely using only the supplied evidence.",
             metadata={"model": settings.llm_model},
         )
