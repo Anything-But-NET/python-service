@@ -256,7 +256,19 @@ def test_load_golden_set_blocks_path_traversal_and_validates_metadata(tmp_path: 
         encoding="utf-8",
     )
 
+    (ds_dir / "golden_set_v1_1.json").write_text(
+        json.dumps({"dataset_id": "mvp-golden-set", "dataset_version": "v1.1.0", "cases": []}),
+        encoding="utf-8",
+    )
+
     service = EvaluationService(db=db, grounded_answer_service=grounded, datasets_dir=ds_dir)
+
+    assert service.load_golden_set(
+        EvaluationDatasetConfig(dataset_id="mvp-golden-set", dataset_version="v1.0.0")
+    )["dataset_version"] == "v1.0.0"
+    assert service.load_golden_set(
+        EvaluationDatasetConfig(dataset_id="mvp-golden-set", dataset_version="v1.1.0")
+    )["dataset_version"] == "v1.1.0"
 
     with pytest.raises(GenerationServiceError) as exc_traversal:
         service.load_golden_set(
@@ -551,13 +563,13 @@ async def test_evaluation_service_runs_on_parsed_corpus_and_60_golden_set_cases(
     response = await eval_service.run_evaluation(request)
     assert response.id == run_id
     assert response.status == EvaluationRunStatus.COMPLETED
-    assert response.metadata.total_cases == 60
-    assert vectorizer.vectorize_query.call_count == 60
-    assert db.query_with_auto_merge.await_count == 60
+    assert response.metadata.total_cases == 63
+    assert vectorizer.vectorize_query.call_count == 63
+    assert db.query_with_auto_merge.await_count == 63
 
     summaries = {s.dimension: s for s in response.metadata.dimension_summaries}
     assert summaries[QualityDimension.RELEVANCE].evaluated_cases_count == 40
-    assert summaries[QualityDimension.SAFE_NO_ANSWER].evaluated_cases_count == 20
+    assert summaries[QualityDimension.SAFE_NO_ANSWER].evaluated_cases_count == 23
     assert response.metadata.overall_pass_rate >= 0.75
     assert response.metadata.failed_cases > 0
     assert any(c.failure_reasons for c in response.metadata.case_results if not c.passed)

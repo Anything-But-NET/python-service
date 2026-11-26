@@ -94,6 +94,13 @@ Dataset: `datasets/golden_set_v1.json` (`dataset_id: "mvp-golden-set"`, `dataset
      - `GS-046` (`"What Jenkins version is used in the Automation Server?"`): retrieves the Section 1 diagram line `"JENKINS AUTOMATION SERVER runs in AWS EC2 / VPC Private Subnet"` instead of the Section 4 specification table row containing `"Jenkins v2.414"` (`score = 0.55 < 0.75`).
      - `GS-053` (`"Which Container Network Interface (CNI) does the EKS cluster use?"`): retrieves Section 1 `"Amazon EKS Cluster runs Kubernetes v1.28"` instead of Section 4 `"Managed Node Groups (m5.xlarge), Cilium CNI"`.
 
+### Dataset version compatibility
+
+The offline baseline in this document intentionally remains tied to **v1.0.0**. Keep that dataset available at
+`datasets/golden_set_v1.json`. The labeled **v1.1.0** dataset is stored separately at
+`datasets/golden_set_v1_1.json`. When `dataset_path` is omitted, the evaluator selects the file from
+`dataset_version`; callers that provide an explicit path must use the matching versioned file.
+
 ### 2.3. Known Limitations of Golden Set `v1.0.0`
 1. **Single-document coverage for answerable queries:** All 40 answerable cases (`GS-021` to `GS-060`) target a single technical specification (`[Eng] Backend Deployment Pipeline Architecture`). Multi-document retrieval and cross-document citation disambiguation are not stressed.
 2. **No conflicting-source cases:** The dataset does not contain contradictory passages across documents to test conflict abstention.
@@ -127,7 +134,7 @@ curl -X POST http://localhost:8000/api/v1/rag/evaluations/runs \
     "dataset": {
       "dataset_id": "mvp-golden-set",
       "dataset_version": "v1.1.0",
-      "dataset_path": "golden_set_v1.json"
+      "dataset_path": "golden_set_v1_1.json"
     },
     "thresholds": {
       "decision_status": "PROPOSED",
