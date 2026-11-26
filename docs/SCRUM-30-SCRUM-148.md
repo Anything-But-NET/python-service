@@ -16,9 +16,9 @@ An answer is returned only when retrieval has evidence above the configured rele
 
 ## Prompt-injection handling
 
-The system policy is sent in a separate `system` message. The question and retrieved passages are JSON-serialized in a `user` message. Retrieved passage text is explicitly designated untrusted reference data; instructions embedded in documents must not change system behavior. No tools are exposed to the model. The response parser never executes model output and rejects citations that were not part of the retrieved evidence.
+The immutable security and answer policy is sent in a single `system` message. A non-default, versioned prompt is JSON-serialized as lower-priority task guidance within that same `system` message, followed by an immutable security reminder; it never relies on a provider-specific `developer` role and cannot override the security policy or required JSON schema. The question and retrieved passages are JSON-serialized in a separate `user` message; retrieved passage text is untrusted reference data, never instructions. Passwords, API keys, access tokens, private keys, and other credentials from retrieved passages must not be disclosed. JSON serialization preserves quotes, newlines, and embedded JSON as string values, but it is not a guarantee against model-level prompt injection. No tools are exposed to the model. The response parser never executes model output and rejects citations that were not part of the retrieved evidence.
 
-This is defense-in-depth at the prompt/data boundary; it does not replace provider-side safety controls or the SCRUM-149 adversarial test suite.
+This is defense-in-depth at the prompt/data boundary, not a hard isolation boundary or a guarantee against model-level prompt injection. It does not replace provider-side safety controls or the SCRUM-149 adversarial test suite.
 
 ## Configuration
 
